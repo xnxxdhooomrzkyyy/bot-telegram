@@ -69,24 +69,35 @@ def tambah():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    nomor_retur = request.form["nomor_retur"]
-    nomor_mobil = request.form["nomor_mobil"]
-    nama_driver = request.form["nama_driver"]
+    try:
+        nomor_retur = request.form.get("nomor_retur")
+        nomor_mobil = request.form.get("nomor_mobil")
+        nama_driver = request.form.get("nama_driver")
 
-    # upload ke Cloudinary
-    file = request.files["bukti"]
-    upload_result = cloudinary.uploader.upload(file)
-    file_url = upload_result["secure_url"]
+        file_url = None
+        if "bukti" in request.files:
+            file = request.files["bukti"]
+            if file.filename != "":
+                # upload ke Cloudinary
+                upload_result = cloudinary.uploader.upload(file)
+                file_url = upload_result.get("secure_url")
 
-    conn = get_db_connection()
-    conn.execute(
-        "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
-        (nomor_retur, nomor_mobil, nama_driver, file_url),
-    )
-    conn.commit()
-    conn.close()
+        # simpan ke database
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
+            (nomor_retur, nomor_mobil, nama_driver, file_url),
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Data retur berhasil ditambahkan", "success")  # kasih notifikasi ke user
+    except Exception as e:
+        print("Error saat tambah retur:", e)
+        flash("Gagal menambahkan retur", "danger")  # kasih notifikasi error
 
     return redirect(url_for("dashboard"))
+
 
 # --- download excel ---
 @app.route("/export")
@@ -94,28 +105,31 @@ def export():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    conn = get_db_connection()
-    data = conn.execute("SELECT * FROM retur").fetchall()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        data = conn.execute("SELECT * FROM retur").fetchall()
+        conn.close()
 
-    wb = Workbook()
-    ws = wb.active
-    ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Created At"])
-    for row in data:
-        ws.append([row["id"], row["nomor_retur"], row["nomor_mobil"], row["nama_driver"], row["bukti"], row["created_at"]])
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Created At"])
 
-    file_path = "retur_export.xlsx"
-    wb.save(file_path)
+        for row in data:
+            ws.append([
+                row["id"],
+                row["nomor_retur"],
+                row["nomor_mobil"],
+                row["nama_driver"],
+                row["bukti"],
+                row["created_at"]
+            ])
 
-    return send_file(file_path, as_attachment=True)
+        file_path = "retur_export.xlsx"
+        wb.save(file_path)
 
-# --- logout ---
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    return redirect(url_for("login"))
+        return send_file(file_path, as_attachment=True)
 
-# --- run ---
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-
+    except Exception as e:
+        print("Error saat export:", e)
+        flash("Gagal mengekspor data", "danger")
+        return redirect(url_for("dashboard"))

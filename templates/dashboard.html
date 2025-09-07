@@ -1,97 +1,78 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-dark bg-dark mb-4">
-  <div class="container-fluid">
-    <span class="navbar-brand">🚚 Dashboard - {{ kode_toko }}</span>
-    <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">Logout</a>
-  </div>
-</nav>
+  <nav class="navbar navbar-dark bg-primary mb-4">
+    <div class="container-fluid">
+      <span class="navbar-brand mb-0 h1">Dashboard Retur</span>
+      <a href="/" class="btn btn-light btn-sm">Logout</a>
+    </div>
+  </nav>
 
-<div class="container">
-  {% if success %}
-    <div class="alert alert-success">{{ success }}</div>
-  {% endif %}
+  <div class="container">
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card shadow">
+          <div class="card-body">
+            <h5 class="card-title">Upload Bukti Pengiriman</h5>
+            <form method="post" action="/upload" enctype="multipart/form-data">
+              <div class="mb-3">
+                <label class="form-label">Nomor Retur</label>
+                <input type="text" name="nomor_retur" class="form-control" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Upload Bukti</label>
+                <input type="file" name="bukti" class="form-control" required>
+              </div>
+              <button type="submit" class="btn btn-success">Upload</button>
+            </form>
+          </div>
+        </div>
+      </div>
 
-  <div class="card mb-4 shadow-sm">
-    <div class="card-header">Tambah Pengiriman</div>
-    <div class="card-body">
-      <form method="POST" enctype="multipart/form-data" class="row g-3">
-        <div class="col-md-6">
-          <label class="form-label">NRB</label>
-          <input name="nrb" class="form-control" required>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Tanggal</label>
-          <input name="tanggal" type="date" class="form-control" required>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">No Mobil</label>
-          <input name="no_mobil" class="form-control" required>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Driver</label>
-          <input name="driver" class="form-control" required>
-        </div>
-        <div class="col-12">
-          <label class="form-label">Upload Foto Bukti</label>
-          <input name="foto" type="file" class="form-control">
-        </div>
-        <div class="col-12 text-end">
-          <button type="submit" class="btn btn-primary">Simpan</button>
-        </div>
-      </form>
+      <div class="col-md-6 d-flex align-items-center">
+        <a href="/export" class="btn btn-outline-primary ms-auto">
+          Export Excel
+        </a>
+      </div>
+    </div>
+
+    <div class="card shadow">
+      <div class="card-body">
+        <h5 class="card-title">Data Retur</h5>
+        <table class="table table-striped table-bordered">
+          <thead class="table-dark">
+            <tr>
+              <th>No</th>
+              <th>Nomor Retur</th>
+              <th>Bukti</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ row['nomor_retur'] }}</td>
+              <td>
+                <a href="{{ row['bukti_url'] }}" target="_blank" class="btn btn-sm btn-info">
+                  Lihat Bukti
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" class="text-center">Belum ada data</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <div class="card shadow-sm">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <form method="GET" class="d-flex">
-        <input name="filter_nrb" class="form-control me-2" placeholder="Cari NRB" value="{{ filter_nrb }}">
-        <button class="btn btn-outline-primary">Cari</button>
-      </form>
-      <a href="{{ url_for('export_excel', filter_nrb=filter_nrb) }}" class="btn btn-success btn-sm">Export Excel</a>
-    </div>
-    <div class="card-body">
-      <table class="table table-striped table-bordered align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th>NRB</th>
-            <th>Tanggal</th>
-            <th>No Mobil</th>
-            <th>Driver</th>
-            <th>Foto</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in riwayat %}
-          <tr>
-            <td>{{ r['nrb'] }}</td>
-            <td>{{ r['tanggal'] }}</td>
-            <td>{{ r['no_mobil'] }}</td>
-            <td>{{ r['driver'] }}</td>
-            <td>
-              {% if r['foto'] %}
-                <a href="{{ r['foto'] }}" target="_blank" class="btn btn-sm btn-outline-info">Lihat</a>
-              {% else %}
-                -
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

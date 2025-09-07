@@ -133,3 +133,9 @@ def export():
         print("Error saat export:", e)
         flash("Gagal mengekspor data", "danger")
         return redirect(url_for("dashboard"))
+
+# --- logout ---
+@app.route("/logout")
+def logout():
+    session.pop("user", None)  # hapus session login
+    return redirect(url_for("login"))

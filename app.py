@@ -112,3 +112,24 @@ def export():
 
         wb = Workbook()
         ws = wb.active
+        ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Created At"])
+
+        for row in data:
+            ws.append([
+                row["id"],
+                row["nomor_retur"],
+                row["nomor_mobil"],
+                row["nama_driver"],
+                row["bukti"],
+                row["created_at"]
+            ])
+
+        file_path = "retur_export.xlsx"
+        wb.save(file_path)
+
+        return send_file(file_path, as_attachment=True)
+
+    except Exception as e:
+        print("Error saat export:", e)
+        flash("Gagal mengekspor data", "danger")
+        return redirect(url_for("dashboard"))

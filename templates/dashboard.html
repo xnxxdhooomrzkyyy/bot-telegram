@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <body>
+    <h2>Dashboard - {{ kode_toko }}</h2>
+    <a href="{{ url_for('logout') }}">Logout</a>
+    <hr>
+    {% if success %}<p style="color:green;">{{ success }}</p>{% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+      <input name="nrb" placeholder="NRB" required><br>
+      <input name="tanggal" type="date" required><br>
+      <input name="no_mobil" placeholder="No Mobil" required><br>
+      <input name="driver" placeholder="Driver" required><br>
+      <input name="foto" type="file"><br>
+      <button type="submit">Simpan</button>
+    </form>
+
+    <hr>
+    <form method="GET">
+      <input name="filter_nrb" placeholder="Cari NRB" value="{{ filter_nrb }}"><button type="submit">Cari</button>
+      <a href="{{ url_for('export_excel', filter_nrb=filter_nrb) }}">Export Excel</a>
+    </form>
+
+    <table border="1" cellpadding="6">
+      <tr><th>NRB</th><th>Tanggal</th><th>No Mobil</th><th>Driver</th><th>Foto</th></tr>
+      {% for r in riwayat %}
+      <tr>
+        <td>{{ r['nrb'] }}</td>
+        <td>{{ r['tanggal'] }}</td>
+        <td>{{ r['no_mobil'] }}</td>
+        <td>{{ r['driver'] }}</td>
+        <td>
+          {% if r['foto'] %}
+            <a href="{{ r['foto'] }}" target="_blank">Lihat</a>
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </body>
+</html>

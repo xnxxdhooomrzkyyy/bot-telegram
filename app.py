@@ -2,7 +2,7 @@ import os
 import sqlite3
 import cloudinary
 import cloudinary.uploader
-from flask import Flask, request, render_template, redirect, url_for, session, send_file
+from flask import Flask, request, render_template, redirect, url_for, session, send_file, flash
 from openpyxl import Workbook
 
 app = Flask(__name__)
@@ -10,10 +10,9 @@ app.secret_key = "rahasia123"
 DB_NAME = "database.db"
 
 # --- Konfigurasi Cloudinary ---
+# Lebih aman pakai Environment Variable di Render
 cloudinary.config(
-    cloud_name=os.getenv("dghs2f716"),
-    api_key=os.getenv("364918572677439"),
-    api_secret=os.getenv("22BX_pQ1oz6B_cKGdx2OHVxvW1g")
+    cloudinary_url=os.getenv("CLOUDINARY_URL=cloudinary://364918572677439:22BX_pQ1oz6B_cKGdx2OHVxvW1g@dghs2f716")
 )
 
 # --- fungsi untuk koneksi database ---
@@ -51,6 +50,8 @@ def login():
         if kode_toko == "admin" and password == "123":
             session["user"] = kode_toko
             return redirect(url_for("dashboard"))
+        else:
+            flash("Login gagal, coba lagi!", "danger")
     return render_template("login.html")
 
 # --- dashboard ---
@@ -79,11 +80,9 @@ def tambah():
             if "bukti" in request.files:
                 file = request.files["bukti"]
                 if file.filename != "":
-                    # upload ke Cloudinary
                     upload_result = cloudinary.uploader.upload(file)
                     file_url = upload_result.get("secure_url")
 
-            # simpan ke database
             conn = get_db_connection()
             conn.execute(
                 "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
@@ -92,14 +91,13 @@ def tambah():
             conn.commit()
             conn.close()
 
-            flash("Data retur berhasil ditambahkan", "success")
+            flash("Data retur berhasil ditambahkan ✅", "success")
         except Exception as e:
             print("Error saat tambah retur:", e)
-            flash("Gagal menambahkan retur", "danger")
+            flash("Gagal menambahkan retur ❌", "danger")
 
         return redirect(url_for("dashboard"))
 
-    # kalau GET → tampilkan halaman form tambah
     return render_template("tambah.html")
 
 #--- download excel ---
@@ -134,11 +132,11 @@ def export():
 
     except Exception as e:
         print("Error saat export:", e)
-        flash("Gagal mengekspor data", "danger")
+        flash("Gagal mengekspor data ❌", "danger")
         return redirect(url_for("dashboard"))
 
 # --- logout ---
 @app.route("/logout")
 def logout():
-    session.pop("user", None)  # hapus session login
+    session.pop("user", None)
     return redirect(url_for("login"))

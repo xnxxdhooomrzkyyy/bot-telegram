@@ -11,9 +11,9 @@ DB_NAME = "database.db"
 
 # --- Konfigurasi Cloudinary ---
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+    cloud_name=os.getenv("dghs2f716"),
+    api_key=os.getenv("364918572677439"),
+    api_secret=os.getenv("22BX_pQ1oz6B_cKGdx2OHVxvW1g")
 )
 
 # --- fungsi untuk koneksi database ---
@@ -118,3 +118,4 @@ def logout():
 # --- run ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+

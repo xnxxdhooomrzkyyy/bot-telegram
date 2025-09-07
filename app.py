@@ -139,3 +139,27 @@ def export():
 def logout():
     session.pop("user", None)  # hapus session login
     return redirect(url_for("login"))
+
+@app.route("/tambah", methods=["GET", "POST"])
+def tambah():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        nomor_retur = request.form["nomor_retur"]
+        nomor_mobil = request.form["nomor_mobil"]
+        nama_driver = request.form["nama_driver"]
+        bukti = request.form["bukti"]
+
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
+            (nomor_retur, nomor_mobil, nama_driver, bukti)
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("dashboard"))
+
+    # kalau GET → tampilkan form tambah
+    return render_template("tambah.html")

@@ -13,6 +13,11 @@
     .navbar {
       border-radius: 0 0 16px 16px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      background: linear-gradient(90deg, #4facfe, #00f2fe);
+    }
+    .navbar-brand {
+      font-weight: 600;
+      color: white !important;
     }
     .card {
       border-radius: 16px;
@@ -24,12 +29,23 @@
     .btn {
       border-radius: 10px;
     }
+    .btn-success {
+      background: linear-gradient(90deg, #43e97b, #38f9d7);
+      border: none;
+    }
+    .btn-outline-primary {
+      border-radius: 10px;
+    }
+    .alert {
+      border-radius: 12px;
+      font-size: 0.9rem;
+    }
   </style>
 </head>
 <body>
 
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <nav class="navbar navbar-expand-lg">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">🚚 Retur App</a>
       <div class="d-flex">
@@ -40,9 +56,22 @@
 
   <!-- Content -->
   <div class="container my-4">
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="fw-bold">Daftar Retur</h3>
-      <div>
+      <div class="d-flex gap-2">
         <a href="{{ url_for('tambah') }}" class="btn btn-success btn-sm">+ Tambah</a>
         <a href="{{ url_for('export') }}" class="btn btn-outline-primary btn-sm">⬇ Export</a>
       </div>
@@ -69,7 +98,11 @@
               <td>{{ row.nomor_mobil }}</td>
               <td>{{ row.nama_driver }}</td>
               <td>
-                <a href="{{ row.bukti }}" target="_blank" class="btn btn-sm btn-outline-info">Lihat</a>
+                {% if row.bukti %}
+                  <a href="{{ row.bukti }}" target="_blank" class="btn btn-sm btn-outline-info">Lihat</a>
+                {% else %}
+                  <span class="text-muted">-</span>
+                {% endif %}
               </td>
               <td>{{ row.created_at }}</td>
             </tr>
@@ -80,5 +113,6 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

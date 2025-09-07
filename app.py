@@ -64,42 +64,45 @@ def dashboard():
     return render_template("dashboard.html", data=data)
 
 # --- tambah retur (upload ke Cloudinary) ---
-@app.route("/tambah", methods=["POST"])
+@app.route("/tambah", methods=["GET", "POST"])
 def tambah():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    try:
-        nomor_retur = request.form.get("nomor_retur")
-        nomor_mobil = request.form.get("nomor_mobil")
-        nama_driver = request.form.get("nama_driver")
+    if request.method == "POST":
+        try:
+            nomor_retur = request.form.get("nomor_retur")
+            nomor_mobil = request.form.get("nomor_mobil")
+            nama_driver = request.form.get("nama_driver")
 
-        file_url = None
-        if "bukti" in request.files:
-            file = request.files["bukti"]
-            if file.filename != "":
-                # upload ke Cloudinary
-                upload_result = cloudinary.uploader.upload(file)
-                file_url = upload_result.get("secure_url")
+            file_url = None
+            if "bukti" in request.files:
+                file = request.files["bukti"]
+                if file.filename != "":
+                    # upload ke Cloudinary
+                    upload_result = cloudinary.uploader.upload(file)
+                    file_url = upload_result.get("secure_url")
 
-        # simpan ke database
-        conn = get_db_connection()
-        conn.execute(
-            "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
-            (nomor_retur, nomor_mobil, nama_driver, file_url),
-        )
-        conn.commit()
-        conn.close()
+            # simpan ke database
+            conn = get_db_connection()
+            conn.execute(
+                "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
+                (nomor_retur, nomor_mobil, nama_driver, file_url),
+            )
+            conn.commit()
+            conn.close()
 
-        flash("Data retur berhasil ditambahkan", "success")  # kasih notifikasi ke user
-    except Exception as e:
-        print("Error saat tambah retur:", e)
-        flash("Gagal menambahkan retur", "danger")  # kasih notifikasi error
+            flash("Data retur berhasil ditambahkan", "success")
+        except Exception as e:
+            print("Error saat tambah retur:", e)
+            flash("Gagal menambahkan retur", "danger")
 
-    return redirect(url_for("dashboard"))
+        return redirect(url_for("dashboard"))
 
+    # kalau GET → tampilkan halaman form tambah
+    return render_template("tambah.html")
 
-# --- download excel ---
+#--- download excel ---
 @app.route("/export")
 def export():
     if "user" not in session:
@@ -139,27 +142,3 @@ def export():
 def logout():
     session.pop("user", None)  # hapus session login
     return redirect(url_for("login"))
-
-@app.route("/tambah", methods=["GET", "POST"])
-def tambah():
-    if "user" not in session:
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        nomor_retur = request.form["nomor_retur"]
-        nomor_mobil = request.form["nomor_mobil"]
-        nama_driver = request.form["nama_driver"]
-        bukti = request.form["bukti"]
-
-        conn = get_db_connection()
-        conn.execute(
-            "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
-            (nomor_retur, nomor_mobil, nama_driver, bukti)
-        )
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for("dashboard"))
-
-    # kalau GET → tampilkan form tambah
-    return render_template("tambah.html")

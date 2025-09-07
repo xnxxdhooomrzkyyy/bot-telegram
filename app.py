@@ -1,11 +1,20 @@
 import os
 import sqlite3
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, request, render_template, redirect, url_for, session, send_file
 from openpyxl import Workbook
 
 app = Flask(__name__)
 app.secret_key = "rahasia123"
 DB_NAME = "database.db"
+
+# --- Konfigurasi Cloudinary ---
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
 
 # --- fungsi untuk koneksi database ---
 def get_db_connection():
@@ -54,7 +63,7 @@ def dashboard():
     conn.close()
     return render_template("dashboard.html", data=data)
 
-# --- tambah retur ---
+# --- tambah retur (upload ke Cloudinary) ---
 @app.route("/tambah", methods=["POST"])
 def tambah():
     if "user" not in session:
@@ -64,17 +73,15 @@ def tambah():
     nomor_mobil = request.form["nomor_mobil"]
     nama_driver = request.form["nama_driver"]
 
-    # upload bukti
+    # upload ke Cloudinary
     file = request.files["bukti"]
-    filename = file.filename
-    upload_path = os.path.join("uploads", filename)
-    os.makedirs("uploads", exist_ok=True)
-    file.save(upload_path)
+    upload_result = cloudinary.uploader.upload(file)
+    file_url = upload_result["secure_url"]
 
     conn = get_db_connection()
     conn.execute(
         "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
-        (nomor_retur, nomor_mobil, nama_driver, filename),
+        (nomor_retur, nomor_mobil, nama_driver, file_url),
     )
     conn.commit()
     conn.close()
@@ -93,7 +100,7 @@ def export():
 
     wb = Workbook()
     ws = wb.active
-    ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti", "Created At"])
+    ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Created At"])
     for row in data:
         ws.append([row["id"], row["nomor_retur"], row["nomor_mobil"], row["nama_driver"], row["bukti"], row["created_at"]])
 

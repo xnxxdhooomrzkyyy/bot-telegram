@@ -88,6 +88,7 @@
               <th>Driver</th>
               <th>Bukti</th>
               <th>Tanggal</th>
+              <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -104,7 +105,18 @@
                   <span class="text-muted">-</span>
                 {% endif %}
               </td>
-              <td>{{ row.created_at }}</td>
+              <td>
+                {% if row.tanggal_manual %}
+                  {{ row.tanggal_manual }}
+                {% else %}
+                  {{ row.created_at }}
+                {% endif %}
+              </td>
+              <td>
+                <form action="{{ url_for('delete', id=row.id) }}" method="POST" onsubmit="return confirm('Yakin hapus data ini?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+              </td>
             </tr>
             {% endfor %}
           </tbody>

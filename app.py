@@ -2,7 +2,7 @@ import os
 import sqlite3
 import cloudinary
 import cloudinary.uploader
-from flask import Flask, request, render_template, redirect, url_for, session, send_file, flash
+from flask import Flask, request, render_template, redirect, url_for, session, send_file, flash, request
 from openpyxl import Workbook
 
 app = Flask(__name__)
@@ -47,7 +47,7 @@ def login():
     if request.method == "POST":
         kode_toko = request.form["kode_toko"]
         password = request.form["password"]
-        if kode_toko == "admin" and password == "123":
+        if kode_toko == "T8NR" and password == "t8nr":
             session["user"] = kode_toko
             return redirect(url_for("dashboard"))
         else:
@@ -55,14 +55,23 @@ def login():
     return render_template("login.html")
 
 # --- dashboard ---
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET"])
 def dashboard():
     if "user" not in session:
         return redirect(url_for("login"))
+
+    q = request.args.get("q", "").strip()
     conn = get_db_connection()
-    data = conn.execute("SELECT * FROM retur ORDER BY created_at DESC").fetchall()
+    if q:
+        data = conn.execute(
+            "SELECT * FROM retur WHERE nomor_retur LIKE ? ORDER BY created_at DESC",
+            ('%' + q + '%',)
+        ).fetchall()
+    else:
+        data = conn.execute("SELECT * FROM retur ORDER BY created_at DESC").fetchall()
     conn.close()
-    return render_template("dashboard.html", data=data)
+
+    return render_template("dashboard.html", data=data, q=q)
 
 # --- tambah retur (upload ke Cloudinary) ---
 @app.route("/tambah", methods=["GET", "POST"])
@@ -152,4 +161,4 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
-    
+            

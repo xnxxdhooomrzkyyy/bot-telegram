@@ -45,6 +45,7 @@ init_db()
 TOKO_USERS = {
     
     "T8NR": "t8nr",
+    "admin": "admin"
 }
 
 # --- route login ---
@@ -176,3 +177,4 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
+

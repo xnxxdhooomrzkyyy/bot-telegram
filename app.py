@@ -44,7 +44,7 @@ init_db()
 # --- daftar akun toko ---
 TOKO_USERS = {
     "T8NR": "t8nr",
-    "TXMO": "txmo",
+    #"TXMO": "txmo",
     # tambah toko lain di sini
 }
 
@@ -175,3 +175,4 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
+

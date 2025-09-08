@@ -44,8 +44,8 @@ init_db()
 # --- daftar akun toko ---
 TOKO_USERS = {
     "T8NR": "t8nr",
-    #"TXMO": "txmo",
-    # tambah toko lain di sini
+    "TXMO": "txmo",
+    "ABCD": "abcd123",   # contoh toko tambahan
 }
 
 # --- route login ---
@@ -60,7 +60,9 @@ def login():
             return redirect(url_for("dashboard"))
         else:
             flash("Login gagal, coba lagi!", "danger")
-    return render_template("login.html")
+
+    # kirim daftar toko ke template (dropdown login)
+    return render_template("login.html", toko_list=TOKO_USERS.keys())
 
 # --- dashboard ---
 @app.route("/dashboard")
@@ -175,4 +177,3 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
-

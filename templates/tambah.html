@@ -19,6 +19,10 @@
       font-weight: 600;
       color: white !important;
     }
+    .navbar-text {
+      color: white;
+      font-weight: 500;
+    }
     .card {
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
@@ -37,15 +41,17 @@
 
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg">
-    <div class="container-fluid">
+    <div class="container-fluid d-flex justify-content-between">
       <a class="navbar-brand" href="{{ url_for('dashboard') }}">⬅ Kembali</a>
+      <span class="navbar-text">Toko: {{ session['user'] }}</span>
     </div>
   </nav>
 
   <!-- Content -->
   <div class="container my-4">
     <div class="card p-4">
-      <h3 class="mb-3 text-center fw-bold">Tambah Retur</h3>
+      <h3 class="mb-1 text-center fw-bold">Tambah Retur</h3>
+      <p class="text-center text-muted">Input data retur untuk <strong>{{ session['user'] }}</strong></p>
       <form method="POST" enctype="multipart/form-data">
         <div class="mb-3">
           <label class="form-label">Nomor Retur</label>
@@ -77,4 +83,4 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-    </html>
+</html>

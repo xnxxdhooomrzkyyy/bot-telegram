@@ -52,8 +52,8 @@ TOKO_USERS = {
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        kode_toko = request.form["kode_toko"]
-        password = request.form["password"]
+        kode_toko = request.form["kode_toko"].strip()
+        password = request.form["password"].strip()
 
         if kode_toko in TOKO_USERS and TOKO_USERS[kode_toko] == password:
             session["user"] = kode_toko
@@ -61,8 +61,7 @@ def login():
         else:
             flash("Login gagal, coba lagi!", "danger")
 
-    # kirim daftar toko ke template (dropdown login)
-    return render_template("login.html", toko_list=TOKO_USERS.keys())
+    return render_template("login.html")  # ⬅️ tidak perlu kirim toko_list
 
 # --- dashboard ---
 @app.route("/dashboard")
@@ -177,4 +176,5 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
+
 

@@ -72,6 +72,11 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3 class="fw-bold">Daftar Retur</h3>
       <div class="d-flex gap-2">
+        <!-- Form Pencarian -->
+        <form method="GET" action="{{ url_for('dashboard') }}" class="d-flex">
+          <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm me-2" placeholder="Cari No. Retur">
+          <button type="submit" class="btn btn-outline-secondary btn-sm">Cari</button>
+        </form>
         <a href="{{ url_for('tambah') }}" class="btn btn-success btn-sm">+ Tambah</a>
         <a href="{{ url_for('export') }}" class="btn btn-outline-primary btn-sm">⬇ Export</a>
       </div>
@@ -107,9 +112,9 @@
               </td>
               <td>
                 {% if row.tanggal_manual %}
-                  {{ row.tanggal_manual }}
+                  <span class="badge bg-success">{{ row.tanggal_manual }}</span>
                 {% else %}
-                  {{ row.created_at }}
+                  <span class="badge bg-secondary">{{ row.created_at }}</span>
                 {% endif %}
               </td>
               <td>

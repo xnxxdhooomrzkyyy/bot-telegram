@@ -100,6 +100,16 @@ def tambah():
 
     return render_template("tambah.html")
 
+# --- route untuk hapus data ---
+@app.route("/delete/<int:id>", methods=["POST"])
+def delete(id):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM retur WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    flash("Data berhasil dihapus", "danger")
+    return redirect(url_for("dashboard"))
+
 #--- download excel ---
 @app.route("/export")
 def export():
@@ -140,3 +150,4 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
+

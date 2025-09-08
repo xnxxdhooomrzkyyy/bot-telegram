@@ -10,7 +10,6 @@ app.secret_key = "rahasia123"
 DB_NAME = "database.db"
 
 # --- Konfigurasi Cloudinary ---
-# Lebih aman pakai Environment Variable di Render
 cloudinary.config(
     cloudinary_url=os.getenv("CLOUDINARY_URL=cloudinary://364918572677439:22BX_pQ1oz6B_cKGdx2OHVxvW1g@dghs2f716")
 )
@@ -32,6 +31,7 @@ def init_db():
             nomor_mobil TEXT,
             nama_driver TEXT,
             bukti TEXT,
+            tanggal_manual TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -75,6 +75,7 @@ def tambah():
             nomor_retur = request.form.get("nomor_retur")
             nomor_mobil = request.form.get("nomor_mobil")
             nama_driver = request.form.get("nama_driver")
+            tanggal_manual = request.form.get("tanggal_manual")
 
             file_url = None
             if "bukti" in request.files:
@@ -85,8 +86,8 @@ def tambah():
 
             conn = get_db_connection()
             conn.execute(
-                "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti) VALUES (?, ?, ?, ?)",
-                (nomor_retur, nomor_mobil, nama_driver, file_url),
+                "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti, tanggal_manual) VALUES (?, ?, ?, ?, ?)",
+                (nomor_retur, nomor_mobil, nama_driver, file_url, tanggal_manual),
             )
             conn.commit()
             conn.close()
@@ -123,7 +124,7 @@ def export():
 
         wb = Workbook()
         ws = wb.active
-        ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Created At"])
+        ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Tanggal Manual", "Created At"])
 
         for row in data:
             ws.append([
@@ -132,6 +133,7 @@ def export():
                 row["nomor_mobil"],
                 row["nama_driver"],
                 row["bukti"],
+                row["tanggal_manual"],
                 row["created_at"]
             ])
 
@@ -150,4 +152,4 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
-
+    

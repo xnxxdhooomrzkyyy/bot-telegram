@@ -4,7 +4,6 @@ import cloudinary
 import cloudinary.uploader
 from flask import Flask, request, render_template, redirect, url_for, session, send_file, flash
 from openpyxl import Workbook
-from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "rahasia123"
@@ -12,7 +11,7 @@ DB_NAME = "database.db"
 
 # --- Konfigurasi Cloudinary ---
 cloudinary.config(
-    cloudinary_url=os.getenv("CLOUDINARY_URL", "cloudinary://364918572677439:22BX_pQ1oz6B_cKGdx2OHVxvW1g@dghs2f716")
+    cloudinary_url=os.getenv("CLOUDINARY_URL=cloudinary://364918572677439:22BX_pQ1oz6B_cKGdx2OHVxvW1g@dghs2f716")
 )
 
 # --- fungsi koneksi database ---
@@ -25,7 +24,6 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     c = conn.cursor()
-    # tabel retur
     c.execute("""
         CREATE TABLE IF NOT EXISTS retur (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,64 +36,34 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # tabel user toko
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS toko_users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            kode_toko TEXT UNIQUE,
-            password TEXT
-        )
-    """)
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- decorator untuk proteksi admin ---
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if "admin" not in session:
-            flash("Anda harus login sebagai admin dulu!", "danger")
-            return redirect(url_for("admin_login"))
-        return f(*args, **kwargs)
-    return decorated_function
+# --- daftar akun toko ---
+TOKO_USERS = {
+    
+    "T8NR": "t8nr",
+}
 
-# ==========================
-# LOGIN TOKO
-# ==========================
+# --- route login ---
 @app.route("/", methods=["GET", "POST"])
 def login():
-    conn = get_db_connection()
-    toko_list = conn.execute("SELECT kode_toko FROM toko_users").fetchall()
-
     if request.method == "POST":
         kode_toko = request.form["kode_toko"]
         password = request.form["password"]
 
-        user = conn.execute(
-            "SELECT * FROM toko_users WHERE kode_toko = ? AND password = ?",
-            (kode_toko, password)
-        ).fetchone()
-
-        if user:
+        if kode_toko in TOKO_USERS and TOKO_USERS[kode_toko] == password:
             session["user"] = kode_toko
-            conn.close()
             return redirect(url_for("dashboard"))
         else:
             flash("Login gagal, coba lagi!", "danger")
 
-    conn.close()
-    return render_template("login.html", toko_list=[row["kode_toko"] for row in toko_list])
+    # kirim daftar toko ke template (dropdown login)
+    return render_template("login.html", toko_list=TOKO_USERS.keys())
 
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    return redirect(url_for("login"))
-
-# ==========================
-# DASHBOARD TOKO
-# ==========================
+# --- dashboard ---
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -116,9 +84,7 @@ def dashboard():
     conn.close()
     return render_template("dashboard.html", data=data, q=q)
 
-# ==========================
-# TAMBAH RETUR
-# ==========================
+# --- tambah retur ---
 @app.route("/tambah", methods=["GET", "POST"])
 def tambah():
     if "user" not in session:
@@ -155,9 +121,7 @@ def tambah():
 
     return render_template("tambah.html")
 
-# ==========================
-# HAPUS RETUR
-# ==========================
+# --- hapus retur ---
 @app.route("/delete/<int:id>", methods=["POST"])
 def delete(id):
     if "user" not in session:
@@ -170,9 +134,7 @@ def delete(id):
     flash("Data berhasil dihapus", "danger")
     return redirect(url_for("dashboard"))
 
-# ==========================
-# EXPORT RETUR
-# ==========================
+# --- export Excel ---
 @app.route("/export")
 def export():
     if "user" not in session:
@@ -209,76 +171,8 @@ def export():
         flash("Gagal mengekspor data ❌", "danger")
         return redirect(url_for("dashboard"))
 
-# ==========================
-# ADMIN LOGIN
-# ==========================
-@app.route("/admin/login", methods=["GET", "POST"])
-def admin_login():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        if username == "ADMIN" and password == "admin123":
-            session["admin"] = True
-            return redirect(url_for("manage_toko"))
-        else:
-            flash("Login admin gagal ❌", "danger")
-
-    return render_template("admin_login.html")
-
-@app.route("/admin/logout")
-def admin_logout():
-    session.pop("admin", None)
-    flash("Anda sudah logout dari admin ✅", "success")
-    return redirect(url_for("admin_login"))
-
-# ==========================
-# ADMIN MANAJEMEN TOKO
-# ==========================
-@app.route("/admin/toko", methods=["GET", "POST"])
-@admin_required
-def manage_toko():
-    if request.method == "POST":
-        kode_toko = request.form["kode_toko"].strip().upper()
-        password = request.form["password"].strip()
-
-        if kode_toko and password:
-            try:
-                conn = get_db_connection()
-                conn.execute(
-                    "INSERT INTO toko_users (kode_toko, password) VALUES (?, ?)",
-                    (kode_toko, password)
-                )
-                conn.commit()
-                conn.close()
-                flash(f"Toko {kode_toko} berhasil ditambahkan ✅", "success")
-            except Exception as e:
-                flash(f"Gagal menambah toko: {e}", "danger")
-
-        return redirect(url_for("manage_toko"))
-
-    conn = get_db_connection()
-    toko_list = conn.execute("SELECT * FROM toko_users ORDER BY id DESC").fetchall()
-    conn.close()
-    return render_template("manage_toko.html", toko_list=toko_list)
-
-@app.route("/admin/toko/delete/<int:id>", methods=["POST"])
-@admin_required
-def delete_toko(id):
-    try:
-        conn = get_db_connection()
-        conn.execute("DELETE FROM toko_users WHERE id = ?", (id,))
-        conn.commit()
-        conn.close()
-        flash("Toko berhasil dihapus ❌", "danger")
-    except Exception as e:
-        flash(f"Gagal menghapus toko: {e}", "danger")
-
-    return redirect(url_for("manage_toko"))
-
-# ==========================
-# RENDER ENTRY POINT
-# ==========================
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+# --- logout ---
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))

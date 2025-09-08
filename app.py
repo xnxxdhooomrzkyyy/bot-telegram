@@ -44,6 +44,18 @@ init_db()
 # --- daftar akun toko ---
 TOKO_USERS = {
     "T8NR": "t8nr",
+    "TYE5": "tye5",
+    "TLRP": "tlrp",
+    "TS12": "ts12",
+    "TGRV": "tgrv",
+    "TBZX": "tbzx",
+    "TQMV": "tqmv",
+    "FEU5": "feu5",
+    "FHEJ": "fhej",
+    "TJAL": "tjal",
+    "TSFS": "tsfs",
+    "T4UC": "t4uc",
+    "TCKN": "tckn",
 }
 
 # --- route login ---
@@ -178,3 +190,4 @@ def logout():
 
 if __name__ == "__main__":
     app.run(debug=True)
+

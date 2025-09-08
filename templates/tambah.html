@@ -8,8 +8,9 @@
   <style>
     body {
       background: #f8f9fa;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Poppins', sans-serif;
     }
+    /* Navbar */
     .navbar {
       border-radius: 0 0 16px 16px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -23,17 +24,34 @@
       color: white;
       font-weight: 500;
     }
+    /* Card */
     .card {
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border-radius: 18px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      transition: transform 0.2s;
     }
+    .card:hover {
+      transform: translateY(-4px);
+    }
+    /* Button */
     .btn-primary {
       background: linear-gradient(90deg, #43e97b, #38f9d7);
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: 0.3s;
+    }
+    .btn-primary:hover {
+      transform: scale(1.03);
+      opacity: 0.9;
     }
     .btn-secondary {
-      border-radius: 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+    /* Label */
+    .form-label {
+      font-weight: 500;
     }
   </style>
 </head>
@@ -42,16 +60,17 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg">
     <div class="container-fluid d-flex justify-content-between">
-      <a class="navbar-brand" href="{{ url_for('dashboard') }}">⬅ Kembali</a>
+      <a class="navbar-brand" href="{{ url_for('dashboard') }}">⬅ Dashboard</a>
       <span class="navbar-text">Toko: {{ session['user'] }}</span>
     </div>
   </nav>
 
   <!-- Content -->
-  <div class="container my-4">
+  <div class="container my-5">
     <div class="card p-4">
-      <h3 class="mb-1 text-center fw-bold">Tambah Retur</h3>
-      <p class="text-center text-muted">Input data retur untuk <strong>{{ session['user'] }}</strong></p>
+      <h3 class="mb-2 text-center fw-bold">Tambah Retur</h3>
+      <p class="text-center text-muted">Isi data retur untuk <strong>{{ session['user'] }}</strong></p>
+      
       <form method="POST" enctype="multipart/form-data">
         <div class="mb-3">
           <label class="form-label">Nomor Retur</label>
@@ -74,8 +93,8 @@
           <input type="file" name="bukti" class="form-control">
         </div>
         <div class="d-flex justify-content-between">
-          <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Batal</a>
-          <button type="submit" class="btn btn-primary">Simpan</button>
+          <a href="{{ url_for('dashboard') }}" class="btn btn-secondary px-4">Batal</a>
+          <button type="submit" class="btn btn-primary px-4">Simpan</button>
         </div>
       </form>
     </div>

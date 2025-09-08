@@ -43,9 +43,7 @@ init_db()
 
 # --- daftar akun toko ---
 TOKO_USERS = {
-    
     "T8NR": "t8nr",
-    "admin": "admin"
 }
 
 # --- route login ---
@@ -59,9 +57,9 @@ def login():
             session["user"] = kode_toko
             return redirect(url_for("dashboard"))
         else:
-            flash("Login gagal, coba lagi!", "danger")
+            flash("❌ Kode Toko atau Password salah!", "danger")
 
-    return render_template("login.html")  # ⬅️ tidak perlu kirim toko_list
+    return render_template("login.html")
 
 # --- dashboard ---
 @app.route("/dashboard")
@@ -178,3 +176,5 @@ def logout():
     return redirect(url_for("login"))
 
 
+if __name__ == "__main__":
+    app.run(debug=True)

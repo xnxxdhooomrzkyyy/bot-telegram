@@ -2,7 +2,7 @@ import os
 import sqlite3
 import cloudinary
 import cloudinary.uploader
-from flask import Flask, request, render_template, redirect, url_for, session, send_file, flash, request
+from flask import Flask, request, render_template, redirect, url_for, session, send_file, flash
 from openpyxl import Workbook
 
 app = Flask(__name__)
@@ -14,7 +14,7 @@ cloudinary.config(
     cloudinary_url=os.getenv("CLOUDINARY_URL=cloudinary://364918572677439:22BX_pQ1oz6B_cKGdx2OHVxvW1g@dghs2f716")
 )
 
-# --- fungsi untuk koneksi database ---
+# --- fungsi koneksi database ---
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
@@ -27,6 +27,7 @@ def init_db():
     c.execute("""
         CREATE TABLE IF NOT EXISTS retur (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kode_toko TEXT,
             nomor_retur TEXT,
             nomor_mobil TEXT,
             nama_driver TEXT,
@@ -38,16 +39,23 @@ def init_db():
     conn.commit()
     conn.close()
 
-# panggil saat aplikasi start
 init_db()
 
-# --- route login sederhana ---
+# --- daftar akun toko ---
+TOKO_USERS = {
+    "T8NR": "t8nr",
+    "TXMO": "txmo",
+    # tambah toko lain di sini
+}
+
+# --- route login ---
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         kode_toko = request.form["kode_toko"]
         password = request.form["password"]
-        if kode_toko == "T8NR" and password == "t8nr":
+
+        if kode_toko in TOKO_USERS and TOKO_USERS[kode_toko] == password:
             session["user"] = kode_toko
             return redirect(url_for("dashboard"))
         else:
@@ -55,7 +63,7 @@ def login():
     return render_template("login.html")
 
 # --- dashboard ---
-@app.route("/dashboard", methods=["GET"])
+@app.route("/dashboard")
 def dashboard():
     if "user" not in session:
         return redirect(url_for("login"))
@@ -64,16 +72,18 @@ def dashboard():
     conn = get_db_connection()
     if q:
         data = conn.execute(
-            "SELECT * FROM retur WHERE nomor_retur LIKE ? ORDER BY created_at DESC",
-            ('%' + q + '%',)
+            "SELECT * FROM retur WHERE kode_toko = ? AND nomor_retur LIKE ? ORDER BY created_at DESC",
+            (session["user"], "%" + q + "%"),
         ).fetchall()
     else:
-        data = conn.execute("SELECT * FROM retur ORDER BY created_at DESC").fetchall()
+        data = conn.execute(
+            "SELECT * FROM retur WHERE kode_toko = ? ORDER BY created_at DESC",
+            (session["user"],),
+        ).fetchall()
     conn.close()
-
     return render_template("dashboard.html", data=data, q=q)
 
-# --- tambah retur (upload ke Cloudinary) ---
+# --- tambah retur ---
 @app.route("/tambah", methods=["GET", "POST"])
 def tambah():
     if "user" not in session:
@@ -95,8 +105,8 @@ def tambah():
 
             conn = get_db_connection()
             conn.execute(
-                "INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti, tanggal_manual) VALUES (?, ?, ?, ?, ?)",
-                (nomor_retur, nomor_mobil, nama_driver, file_url, tanggal_manual),
+                "INSERT INTO retur (kode_toko, nomor_retur, nomor_mobil, nama_driver, bukti, tanggal_manual) VALUES (?, ?, ?, ?, ?, ?)",
+                (session["user"], nomor_retur, nomor_mobil, nama_driver, file_url, tanggal_manual),
             )
             conn.commit()
             conn.close()
@@ -110,17 +120,20 @@ def tambah():
 
     return render_template("tambah.html")
 
-# --- route untuk hapus data ---
+# --- hapus retur ---
 @app.route("/delete/<int:id>", methods=["POST"])
 def delete(id):
+    if "user" not in session:
+        return redirect(url_for("login"))
+
     conn = get_db_connection()
-    conn.execute("DELETE FROM retur WHERE id = ?", (id,))
+    conn.execute("DELETE FROM retur WHERE id = ? AND kode_toko = ?", (id, session["user"]))
     conn.commit()
     conn.close()
     flash("Data berhasil dihapus", "danger")
     return redirect(url_for("dashboard"))
 
-#--- download excel ---
+# --- export Excel ---
 @app.route("/export")
 def export():
     if "user" not in session:
@@ -128,25 +141,26 @@ def export():
 
     try:
         conn = get_db_connection()
-        data = conn.execute("SELECT * FROM retur").fetchall()
+        data = conn.execute("SELECT * FROM retur WHERE kode_toko = ?", (session["user"],)).fetchall()
         conn.close()
 
         wb = Workbook()
         ws = wb.active
-        ws.append(["ID", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Tanggal Manual", "Created At"])
+        ws.append(["ID", "Kode Toko", "Nomor Retur", "Nomor Mobil", "Nama Driver", "Bukti (URL)", "Tanggal Manual", "Created At"])
 
         for row in data:
             ws.append([
                 row["id"],
+                row["kode_toko"],
                 row["nomor_retur"],
                 row["nomor_mobil"],
                 row["nama_driver"],
                 row["bukti"],
                 row["tanggal_manual"],
-                row["created_at"]
+                row["created_at"],
             ])
 
-        file_path = "retur_export.xlsx"
+        file_path = f"retur_export_{session['user']}.xlsx"
         wb.save(file_path)
 
         return send_file(file_path, as_attachment=True)
@@ -161,4 +175,3 @@ def export():
 def logout():
     session.pop("user", None)
     return redirect(url_for("login"))
-            

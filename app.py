@@ -66,17 +66,83 @@ def base_template(content):
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
       <style>
-        body{{font-family:'Poppins',sans-serif;background:#f4f6f9}}
-        .card{{border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.1)}}
-        .toast{{opacity:0;transition:opacity 0.5s ease-in-out}}
-        .toast.show{{opacity:1}}
+        body {{
+          font-family:'Poppins',sans-serif;
+          background:#f4f6f9;
+          transition: background 0.3s, color 0.3s;
+        }}
+        .card {{
+          border-radius:1rem;
+          box-shadow:0 4px 12px rgba(0,0,0,.1);
+          opacity:0;
+          transform: translateY(15px);
+          animation: fadeInUp 0.6s ease forwards;
+        }}
+        .table-responsive {{
+          opacity:0;
+          animation: fadeIn 0.8s ease forwards;
+          animation-delay: .3s;
+        }}
+        @keyframes fadeInUp {{
+          from {{ opacity:0; transform: translateY(15px); }}
+          to   {{ opacity:1; transform: translateY(0); }}
+        }}
+        @keyframes fadeIn {{
+          from {{ opacity:0; }}
+          to   {{ opacity:1; }}
+        }}
+        /* Toast */
+        .toast {{
+          opacity:0;
+          transition: opacity 0.5s ease-in-out, transform 0.4s ease-in-out;
+          transform: translateX(20px);
+        }}
+        .toast.show {{
+          opacity:1;
+          transform: translateX(0);
+        }}
+        /* Dark Mode */
+        body.dark-mode {{
+          background: #1e1e2f;
+          color: #f5f5f5;
+        }}
+        body.dark-mode .card {{
+          background: #2c2c3c;
+          color: #f5f5f5;
+          box-shadow: 0 4px 12px rgba(255,255,255,.05);
+        }}
+        body.dark-mode .table {{
+          color: #f5f5f5;
+        }}
+        body.dark-mode .btn-outline-dark {{
+          color: #f5f5f5;
+          border-color: #f5f5f5;
+        }}
+        body.dark-mode .btn-outline-dark:hover {{
+          background: #f5f5f5;
+          color: #2c2c3c;
+        }}
+        /* Row animation highlight */
+        @keyframes rowFadeIn {{
+          0%   {{ background-color: #ffeaa7; opacity: 0; transform: translateY(-5px); }}
+          50%  {{ background-color: #fdcb6e; opacity: 1; }}
+          100% {{ background-color: transparent; opacity: 1; transform: translateY(0); }}
+        }}
+        .new-row {{
+          animation: rowFadeIn 1.2s ease forwards;
+        }}
       </style>
     </head>
     <body>
-      <div class="container py-4">{content}</div>
+      <div class="container py-4">
+        <div class="d-flex justify-content-end mb-3">
+          <button id="darkToggle" class="btn btn-outline-dark">🌙 Dark Mode</button>
+        </div>
+        {content}
+      </div>
 
       <!-- Toast Container -->
-      <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:1100;">
+      <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
         <div id="mainToast" class="toast align-items-center text-bg-success border-0" role="alert">
           <div class="d-flex">
             <div class="toast-body" id="toastMessage">✅ Data berhasil disimpan!</div>
@@ -87,6 +153,7 @@ def base_template(content):
 
       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
       <script>
+        // Toast helper
         function showToast(message, type="success") {{
           const toastEl = document.getElementById("mainToast");
           const toastBody = document.getElementById("toastMessage");
@@ -96,12 +163,31 @@ def base_template(content):
           const toast = new bootstrap.Toast(toastEl, {{ delay: 3000, autohide: true }});
           toast.show();
         }}
+
+        // Dark mode toggle
+        const toggleBtn = document.getElementById("darkToggle");
+        if (localStorage.getItem("theme") === "dark") {{
+          document.body.classList.add("dark-mode");
+          toggleBtn.textContent = "☀️ Light Mode";
+        }}
+        toggleBtn.addEventListener("click", () => {{
+          document.body.classList.toggle("dark-mode");
+          if (document.body.classList.contains("dark-mode")) {{
+            toggleBtn.textContent = "☀️ Light Mode";
+            localStorage.setItem("theme","dark");
+          }} else {{
+            toggleBtn.textContent = "🌙 Dark Mode";
+            localStorage.setItem("theme","light");
+          }}
+        }});
+
+        // Flash messages to toast
         document.addEventListener("DOMContentLoaded", () => {{
-          {{% with messages = get_flashed_messages(with_categories=true) %}}
-            {{% for category, message in messages %}}
-              showToast("{{{{ message }}}}", "{{{{ category }}}}");
-            {{% endfor %}}
-          {{% endwith %}}
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+              showToast("{{ message }}", "{{ category }}");
+            {% endfor %}
+          {% endwith %}
         }});
       </script>
     </body>
@@ -142,9 +228,9 @@ def login():
             u=c.fetchone()
         if u:
             session.update({"user_id":u[0],"kode_toko":kode,"role":u[1]})
-            flash("Selamat datang, login berhasil ✅","success")
+            flash("Login berhasil ✅","success")
             return redirect(url_for("index"))
-        flash("❌ Login gagal! Periksa kode toko & password","error")
+        flash("❌ Login gagal, periksa kode/password","error")
         return redirect(url_for("login"))
     return base_template("""
     <h3>Login</h3>
@@ -157,9 +243,9 @@ def login():
     """)
 
 @app.route("/logout")
-def logout():
+def logout(): 
     session.clear()
-    flash("Anda berhasil logout ✅","success")
+    flash("Berhasil logout 👋","success")
     return redirect(url_for("login"))
 
 # --- DASHBOARD ---
@@ -177,8 +263,9 @@ def index():
         with sqlite3.connect("rekap.db") as conn:
             conn.execute("INSERT INTO pengiriman (user_id,nrb,tgl_pengiriman,no_mobil,driver,bukti_url) VALUES (?,?,?,?,?,?)",
                          (user_id,nrb,tgl,no,drv,url))
-        flash("✅ Data pengiriman berhasil disimpan","success")
+        flash("Data berhasil disimpan ✅","success")
         return redirect(url_for("index"))
+
     with sqlite3.connect("rekap.db") as conn:
         c=conn.cursor()
         if session["role"]=="admin":
@@ -194,12 +281,15 @@ def index():
             else:
                 c.execute("SELECT nrb,tgl_pengiriman,no_mobil,driver,bukti_url FROM pengiriman WHERE user_id=? ORDER BY id DESC",(user_id,))
         data=c.fetchall()
+
     rows=""
-    for r in data:
+    for i,r in enumerate(data):
+        cls="new-row" if i==0 else ""
         if session["role"]=="admin":
-            rows+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><a href='{r[5]}' target='_blank'>Bukti</a></td></tr>"
+            rows+=f"<tr class='{cls}'><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><a href='{r[5]}' target='_blank'>Bukti</a></td></tr>"
         else:
-            rows+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td><a href='{r[4]}' target='_blank'>Bukti</a></td></tr>"
+            rows+=f"<tr class='{cls}'><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td><a href='{r[4]}' target='_blank'>Bukti</a></td></tr>"
+
     return base_template(f"""
     <h2 class="text-center">📦 Rekap Pengiriman<br><small>{session['kode_toko']} ({session['role']})</small></h2>
     <div class="d-flex flex-column flex-md-row justify-content-between mb-3 gap-2">
@@ -270,10 +360,10 @@ def export_pdf():
             else: q+=" ORDER BY id DESC"; c.execute(q,(user_id,))
         data=c.fetchall()
     pdf=FPDF(); pdf.add_page(); pdf.set_font("Arial","B",14); pdf.cell(0,10,"Rekap Pengiriman",0,1,"C"); pdf.set_font("Arial","",10)
-    colw=[30,30,30,40,40]; headers=["Kode Toko","NRB","Tanggal","No Mobil","Driver"] if session["role"]=="admin" else ["NRB","Tanggal","No Mobil","Driver"]
-    for i,h in enumerate(headers): pdf.cell(colw[i],10,h,1,0,"C"); pdf.ln() if i==len(headers)-1 else None
+    colw=[30,30,30,40,40]; header=["Kode Toko","NRB","Tanggal","No Mobil","Driver"] if session["role"]=="admin" else ["NRB","Tanggal","No Mobil","Driver"]
+    for i,h in enumerate(header): pdf.cell(colw[i],8,h,1,0,"C"); pdf.ln()
     for r in data:
-        for i,v in enumerate(r): pdf.cell(colw[i],10,str(v),1,0,"C")
+        for i,c in enumerate(r): pdf.cell(colw[i],8,str(c),1)
         pdf.ln()
     fn=f"rekap_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"; path=f"/tmp/{fn}"; pdf.output(path)
     return send_file(path,as_attachment=True,download_name=fn)

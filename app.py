@@ -13,11 +13,10 @@ DB_NAME = "database.db"
 
 # --- Cloudinary Config ---
 cloudinary.config(
-    cloud_name=os.getenv("dghs2f716"),
-    api_key=os.getenv("364918572677439"),
-    api_secret=os.getenv("22BX_pQ1oz6B_cKGdx2OHVxvW1g")
+    cloud_name="dghs2f716",
+    api_key="364918572677439",
+    api_secret="22BX_pQ1oz6B_cKGdx2OHVxvW1g"
 )
-
 # --- DB Helper ---
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME, check_same_thread=False, timeout=10)
@@ -170,4 +169,5 @@ def delete(id):
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=10000)
+
 

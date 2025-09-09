@@ -13,9 +13,9 @@ DB_NAME = "database.db"
 
 # --- Cloudinary Config ---
 cloudinary.config(
-    cloud_name=os.getenv("CLOUD_NAME", "dghs2f716"),
-    api_key=os.getenv("CLOUD_API_KEY", "364918572677439"),
-    api_secret=os.getenv("CLOUD_API_SECRET", "22BX_pQ1oz6B_cKGdx2OHVxvW1g")
+    cloud_name=os.getenv("dghs2f716"),
+    api_key=os.getenv("364918572677439"),
+    api_secret=os.getenv("22BX_pQ1oz6B_cKGdx2OHVxvW1g")
 )
 
 # --- DB Helper ---
@@ -42,14 +42,13 @@ def init_db():
             nama_driver TEXT,
             bukti TEXT,
             tanggal_manual TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            user_id INTEGER,
+            FOREIGN KEY(user_id) REFERENCES users(id)
         )
     """)
     conn.commit()
     conn.close()
-
-# --- Panggil init_db agar selalu jalan ---
-init_db()
 
 # --- Routes ---
 @app.route("/")
@@ -61,8 +60,8 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+        username = request.form["username"]
+        password = request.form["password"]
 
         conn = get_db_connection()
         user = conn.execute("SELECT * FROM users WHERE username=? AND password=?", 
@@ -80,15 +79,8 @@ def login():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        # Debug untuk memastikan form terkirim
-        print("Form Data:", request.form)
-
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        if not username or not password:
-            flash("Username dan password wajib diisi!", "danger")
-            return render_template("register.html")
+        username = request.form["username"]
+        password = request.form["password"]
 
         conn = get_db_connection()
         try:
@@ -116,11 +108,17 @@ def dashboard():
 
     q = request.args.get("q", "")
     conn = get_db_connection()
+    user = conn.execute("SELECT id FROM users WHERE username=?", (session["user"],)).fetchone()
+    user_id = user["id"]
+
     if q:
-        data = conn.execute("SELECT * FROM retur WHERE nomor_retur LIKE ? ORDER BY id DESC", 
-                            (f"%{q}%",)).fetchall()
+        data = conn.execute("""
+            SELECT * FROM retur WHERE user_id=? AND nomor_retur LIKE ? ORDER BY id DESC
+        """, (user_id, f"%{q}%")).fetchall()
     else:
-        data = conn.execute("SELECT * FROM retur ORDER BY id DESC").fetchall()
+        data = conn.execute("""
+            SELECT * FROM retur WHERE user_id=? ORDER BY id DESC
+        """, (user_id,)).fetchall()
     conn.close()
     return render_template("dashboard.html", data=data, q=q)
 
@@ -144,10 +142,13 @@ def tambah():
 
         try:
             conn = get_db_connection()
+            user = conn.execute("SELECT id FROM users WHERE username=?", (session["user"],)).fetchone()
+            user_id = user["id"]
+
             conn.execute("""
-                INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti, tanggal_manual)
-                VALUES (?, ?, ?, ?, ?)
-            """, (nomor_retur, nomor_mobil, nama_driver, bukti_url, tanggal_manual))
+                INSERT INTO retur (nomor_retur, nomor_mobil, nama_driver, bukti, tanggal_manual, user_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (nomor_retur, nomor_mobil, nama_driver, bukti_url, tanggal_manual, user_id))
             conn.commit()
             flash("Data retur berhasil ditambah!", "success")
         except Exception as e:
@@ -166,7 +167,11 @@ def delete(id):
 
     try:
         conn = get_db_connection()
-        conn.execute("DELETE FROM retur WHERE id=?", (id,))
+        user = conn.execute("SELECT id FROM users WHERE username=?", (session["user"],)).fetchone()
+        user_id = user["id"]
+
+        # hanya boleh hapus retur miliknya sendiri
+        conn.execute("DELETE FROM retur WHERE id=? AND user_id=?", (id, user_id))
         conn.commit()
         flash("Data berhasil dihapus", "success")
     except Exception as e:
@@ -176,6 +181,7 @@ def delete(id):
 
     return redirect(url_for("dashboard"))
 
-# --- Main (hanya untuk lokal) ---
+# --- Main ---
 if __name__ == "__main__":
+    init_db()
     app.run(host="0.0.0.0", port=10000)

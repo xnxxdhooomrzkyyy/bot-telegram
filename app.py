@@ -79,7 +79,8 @@ def login():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form["username"]
+        # disesuaikan dengan register.html
+        username = request.form["kode_toko"]
         password = request.form["password"]
 
         conn = get_db_connection()
@@ -90,7 +91,7 @@ def register():
             flash("Registrasi berhasil! Silakan login.", "success")
             return redirect(url_for("login"))
         except sqlite3.IntegrityError:
-            flash("Username sudah dipakai!", "danger")
+            flash("Kode Toko sudah dipakai!", "danger")
         finally:
             conn.close()
     return render_template("register.html")

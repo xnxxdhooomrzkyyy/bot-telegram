@@ -157,7 +157,7 @@ def login():
       <a href="/register">Daftar</a>
     </form>
     <h14>Data ini bersifat sementara yang sewaktu-waktu dapat dihapus oleh admin.</h14><br>
-    <h14>@2025 & 99% dibuat oleh AI 1& oleh Ridho Maulana Rizki.</h14>
+    <h14>@2025 & 99% dibuat oleh AI & 1% oleh Ridho Maulana Rizki.</h14>
     """)
 
 @app.route("/logout")
@@ -284,4 +284,5 @@ def export_pdf():
 
 if __name__=="__main__": 
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 

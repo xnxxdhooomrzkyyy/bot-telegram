@@ -3,3 +3,4 @@ werkzeug
 openpyxl
 cloudinary
 fpdf
+gunicorn

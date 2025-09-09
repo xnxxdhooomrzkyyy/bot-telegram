@@ -6,12 +6,12 @@ from flask import Flask, request, render_template, redirect, url_for, session, s
 from openpyxl import Workbook
 
 app = Flask(__name__)
-app.secret_key = "rahasia123"
+app.secret_key = os.getenv("SECRET_KEY", "rahasia123")  # bisa diatur di Render Environment
 DB_NAME = "database.db"
 
 # --- Konfigurasi Cloudinary ---
 cloudinary.config(
-    cloudinary_url=os.getenv("CLOUDINARY_URL=cloudinary://364918572677439:22BX_pQ1oz6B_cKGdx2OHVxvW1g@dghs2f716")
+    cloudinary_url=os.getenv("CLOUDINARY_URL=cloudinary://364918572677439:22BX_pQ1oz6B_cKGdx2OHVxvW1g@dghs2f716")  # harus diisi di Render Environment
 )
 
 # --- fungsi koneksi database ---
@@ -24,6 +24,7 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     c = conn.cursor()
+    # tabel retur
     c.execute("""
         CREATE TABLE IF NOT EXISTS retur (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,36 +37,58 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    # tabel users
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kode_toko TEXT UNIQUE,
+            password TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- daftar akun toko ---
-TOKO_USERS = {
-    "T8NR": "t8nr",
-    "TYE5": "tye5",
-    "TLRP": "tlrp",
-    "TS12": "ts12",
-    "TGRV": "tgrv",
-    "TBZX": "tbzx",
-    "TQMV": "tqmv",
-    "FEU5": "feu5",
-    "FHEJ": "fhej",
-    "TJAL": "tjal",
-    "TSFS": "tsfs",
-    "T4UC": "t4uc",
-    "TCKN": "tckn",
-}
+# --- route register ---
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        kode_toko = request.form["kode_toko"].strip().upper()
+        password = request.form["password"].strip()
+
+        if len(password) < 4:
+            flash("❌ Password minimal 4 karakter", "danger")
+            return redirect(url_for("register"))
+
+        try:
+            conn = get_db_connection()
+            conn.execute("INSERT INTO users (kode_toko, password) VALUES (?, ?)", (kode_toko, password))
+            conn.commit()
+            conn.close()
+            flash("✅ Registrasi berhasil, silakan login!", "success")
+            return redirect(url_for("login"))
+        except sqlite3.IntegrityError:
+            flash("❌ Kode Toko sudah terdaftar!", "danger")
+            return redirect(url_for("register"))
+
+    return render_template("register.html")
 
 # --- route login ---
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        kode_toko = request.form["kode_toko"].strip()
+        kode_toko = request.form["kode_toko"].strip().upper()
         password = request.form["password"].strip()
 
-        if kode_toko in TOKO_USERS and TOKO_USERS[kode_toko] == password:
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT * FROM users WHERE kode_toko = ? AND password = ?",
+            (kode_toko, password)
+        ).fetchone()
+        conn.close()
+
+        if user:
             session["user"] = kode_toko
             return redirect(url_for("dashboard"))
         else:
@@ -122,10 +145,10 @@ def tambah():
             conn.commit()
             conn.close()
 
-            flash("Data retur berhasil ditambahkan ✅", "success")
+            flash("✅ Data retur berhasil ditambahkan", "success")
         except Exception as e:
             print("Error saat tambah retur:", e)
-            flash("Gagal menambahkan retur ❌", "danger")
+            flash("❌ Gagal menambahkan retur", "danger")
 
         return redirect(url_for("dashboard"))
 
@@ -141,7 +164,7 @@ def delete(id):
     conn.execute("DELETE FROM retur WHERE id = ? AND kode_toko = ?", (id, session["user"]))
     conn.commit()
     conn.close()
-    flash("Data berhasil dihapus", "danger")
+    flash("🗑 Data berhasil dihapus", "danger")
     return redirect(url_for("dashboard"))
 
 # --- export Excel ---
@@ -178,7 +201,7 @@ def export():
 
     except Exception as e:
         print("Error saat export:", e)
-        flash("Gagal mengekspor data ❌", "danger")
+        flash("❌ Gagal mengekspor data", "danger")
         return redirect(url_for("dashboard"))
 
 # --- logout ---
@@ -189,5 +212,5 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

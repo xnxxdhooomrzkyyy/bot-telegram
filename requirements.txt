@@ -1,4 +1,5 @@
 flask
-gunicorn
-cloudinary
+werkzeug
 openpyxl
+cloudinary
+fpdf

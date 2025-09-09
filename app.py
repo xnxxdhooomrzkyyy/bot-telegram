@@ -13,10 +13,11 @@ DB_NAME = "database.db"
 
 # --- Cloudinary Config ---
 cloudinary.config(
-    cloud_name="dghs2f716",
-    api_key="364918572677439",
-    api_secret="22BX_pQ1oz6B_cKGdx2OHVxvW1g"
+    cloud_name=os.getenv("CLOUD_NAME", "dghs2f716"),
+    api_key=os.getenv("CLOUD_API_KEY", "364918572677439"),
+    api_secret=os.getenv("CLOUD_API_SECRET", "22BX_pQ1oz6B_cKGdx2OHVxvW1g")
 )
+
 # --- DB Helper ---
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME, check_same_thread=False, timeout=10)
@@ -47,6 +48,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# --- Panggil init_db agar selalu jalan ---
+init_db()
+
 # --- Routes ---
 @app.route("/")
 def index():
@@ -57,8 +61,8 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = request.form.get("username")
+        password = request.form.get("password")
 
         conn = get_db_connection()
         user = conn.execute("SELECT * FROM users WHERE username=? AND password=?", 
@@ -76,8 +80,15 @@ def login():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        # Debug untuk memastikan form terkirim
+        print("Form Data:", request.form)
+
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        if not username or not password:
+            flash("Username dan password wajib diisi!", "danger")
+            return render_template("register.html")
 
         conn = get_db_connection()
         try:
@@ -165,9 +176,6 @@ def delete(id):
 
     return redirect(url_for("dashboard"))
 
-# --- Main ---
+# --- Main (hanya untuk lokal) ---
 if __name__ == "__main__":
-    init_db()
     app.run(host="0.0.0.0", port=10000)
-
-

@@ -8,7 +8,7 @@
   <style>
     body {
       font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
       height: 100vh;
       display: flex;
       justify-content: center;
@@ -17,8 +17,8 @@
     .card {
       background: rgba(255, 255, 255, 0.95);
       border-radius: 20px;
-      box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-      max-width: 380px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+      max-width: 400px;
       padding: 2rem;
       width: 100%;
       animation: fadeIn 0.8s ease-in-out;
@@ -29,20 +29,28 @@
     }
     .btn-primary {
       border-radius: 12px;
-      background: linear-gradient(90deg, #4facfe, #00f2fe);
+      background: linear-gradient(90deg, #43e97b, #38f9d7);
       border: none;
       font-weight: 600;
       transition: 0.3s;
     }
     .btn-primary:hover {
-      transform: scale(1.03);
+      transform: scale(1.02);
       opacity: 0.95;
+    }
+    .text-center a {
+      text-decoration: none;
+      font-weight: 500;
+      color: #43e97b;
+    }
+    .text-center a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h3 class="text-center mb-4">🔑 Login</h3>
+    <h3 class="text-center mb-4">🔑 Login Toko</h3>
 
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -58,8 +66,8 @@
 
     <form method="post">
       <div class="mb-3">
-        <label class="form-label">Kode Toko</label>
-        <input type="text" name="kode_toko" class="form-control" placeholder="Masukkan kode toko" required>
+        <label class="form-label">Username / Kode Toko</label>
+        <input type="text" name="username" class="form-control" placeholder="Masukkan username" required>
       </div>
       <div class="mb-3">
         <label class="form-label">Password</label>

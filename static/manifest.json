@@ -1,0 +1,10 @@
+{
+  "name": "Rekap Pengiriman",
+  "short_name": "Rekap",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#2c3e50",
+  "orientation": "portrait",
+  "icons": []
+}

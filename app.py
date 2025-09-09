@@ -67,10 +67,11 @@ def base_template(content):
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>Rekap TTD Toko</title>
+      <title>TTD NRB TOKO</title>
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
       <link rel="manifest" href="{{{{ url_for('static', filename='manifest.json') }}}}">
+      <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
       <meta name="theme-color" content="#2c3e50">
       <style>
         body {{ font-family:'Poppins',sans-serif; background:#f4f6f9; }}
@@ -119,12 +120,12 @@ def register():
         try:
             with sqlite3.connect("rekap.db") as conn:
                 conn.execute("INSERT INTO users (kode_toko,password) VALUES (?,?)",(kode,pw))
-            flash("Registrasi berhasil ✅","success")
+            flash("Daftar berhasil ✅ Silahkan login!","success")
             return redirect(url_for("login"))
         except: 
             flash("❌ Kode toko sudah terdaftar!","danger")
     return base_template("""
-    <h3>Registrasi</h3>
+    <h3>Daftar Toko Baru</h3>
     <form method="POST" class="card p-4">
       <input name="kode_toko" placeholder="Kode Toko" class="form-control mb-2" required>
       <input type="password" name="password" placeholder="Password" class="form-control mb-2" required>
@@ -145,15 +146,18 @@ def login():
             session.update({"user_id":u[0],"kode_toko":kode,"role":u[1]})
             flash("Login berhasil 🚀","success")
             return redirect(url_for("index"))
-        flash("❌ Login gagal!","danger")
+        flash("❌ Toko tidak ditemukan! Silahkan Daftar terlebih dahulu!","danger")
     return base_template("""
-    <h3>Login ke Data Rekapan Toko</h3>
+    <h3>Rekapan Tanda Terima Data (TTD) dan Nota Retur Barang (NRB) Toko</h3>
+    <h12>Silahkan masuk untuk melanjutkan</h12>
     <form method="POST" class="card p-4">
       <input name="kode_toko" placeholder="Kode Toko" class="form-control mb-2" required>
       <input type="password" name="password" placeholder="Password" class="form-control mb-2" required>
       <button class="btn btn-success w-100">Login</button>
       <a href="/register">Daftar</a>
     </form>
+    <h14>Data ini bersifat sementara yang sewaktu-waktu dapat dihapus oleh admin.</h14><br>
+    <h14>@2025 & 99% dibuat oleh AI 1& oleh Ridho Maulana Rizki.</h14>
     """)
 
 @app.route("/logout")
@@ -200,7 +204,7 @@ def index():
         else:
             rows+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td><a href='{r[4]}' target='_blank'>Bukti</a></td></tr>"
     return base_template(f"""
-    <h2 class="text-center">📦 Rekap Pengiriman<br><small>{session['kode_toko']} ({session['role']})</small></h2>
+    <h2 class="text-center">📦 Rekap Pengiriman NRB & TTD <br><small>{session['kode_toko']} ({session['role']})</small></h2>
     <div class="d-flex flex-column flex-md-row justify-content-between mb-3 gap-2">
       <a href="/logout" class="btn btn-danger">Logout</a>
       <div class="d-flex flex-column flex-sm-row gap-2">

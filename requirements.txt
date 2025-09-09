@@ -1,6 +1,6 @@
 flask
+gunicorn
 werkzeug
 openpyxl
-cloudinary
 fpdf
-gunicorn
+cloudinary

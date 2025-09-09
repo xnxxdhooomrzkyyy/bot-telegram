@@ -15,7 +15,7 @@ app.secret_key = "supersecretkey"
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Cloudinary (ambil dari environment Render)
+# Cloudinary config (Render Environment Variables)
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),
@@ -44,17 +44,22 @@ def init_db():
 init_db()
 
 # --- UTILS ---
-def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
-def get_user_id(): return session.get("user_id")
+def hash_password(pw): 
+    return hashlib.sha256(pw.encode()).hexdigest()
+
+def get_user_id(): 
+    return session.get("user_id")
+
 def login_required(f):
     from functools import wraps
     @wraps(f)
     def wrapper(*a, **kw):
-        if not session.get("user_id"): return redirect(url_for("login"))
+        if not session.get("user_id"): 
+            return redirect(url_for("login"))
         return f(*a, **kw)
     return wrapper
 
-# --- BASE HTML ---
+# --- BASE TEMPLATE ---
 def base_template(content):
     return render_template_string(f"""
     <!doctype html>
@@ -65,131 +70,42 @@ def base_template(content):
       <title>Rekap Pengiriman</title>
       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+      <link rel="manifest" href="{{{{ url_for('static', filename='manifest.json') }}}}">
+      <meta name="theme-color" content="#2c3e50">
       <style>
-        body {{
-          font-family:'Poppins',sans-serif;
-          background:#f4f6f9;
-          transition: background 0.3s, color 0.3s;
-        }}
-        .card {{
-          border-radius:1rem;
-          box-shadow:0 4px 12px rgba(0,0,0,.1);
-          opacity:0;
-          transform: translateY(15px);
-          animation: fadeInUp 0.6s ease forwards;
-        }}
-        .table-responsive {{
-          opacity:0;
-          animation: fadeIn 0.8s ease forwards;
-          animation-delay: .3s;
-        }}
-        @keyframes fadeInUp {{
-          from {{ opacity:0; transform: translateY(15px); }}
-          to   {{ opacity:1; transform: translateY(0); }}
-        }}
-        @keyframes fadeIn {{
-          from {{ opacity:0; }}
-          to   {{ opacity:1; }}
-        }}
-        /* Toast */
-        .toast {{
-          opacity:0;
-          transition: opacity 0.5s ease-in-out, transform 0.4s ease-in-out;
-          transform: translateX(20px);
-        }}
-        .toast.show {{
-          opacity:1;
-          transform: translateX(0);
-        }}
-        /* Dark Mode */
-        body.dark-mode {{
-          background: #1e1e2f;
-          color: #f5f5f5;
-        }}
-        body.dark-mode .card {{
-          background: #2c2c3c;
-          color: #f5f5f5;
-          box-shadow: 0 4px 12px rgba(255,255,255,.05);
-        }}
-        body.dark-mode .table {{
-          color: #f5f5f5;
-        }}
-        body.dark-mode .btn-outline-dark {{
-          color: #f5f5f5;
-          border-color: #f5f5f5;
-        }}
-        body.dark-mode .btn-outline-dark:hover {{
-          background: #f5f5f5;
-          color: #2c2c3c;
-        }}
-        /* Row animation highlight */
-        @keyframes rowFadeIn {{
-          0%   {{ background-color: #ffeaa7; opacity: 0; transform: translateY(-5px); }}
-          50%  {{ background-color: #fdcb6e; opacity: 1; }}
-          100% {{ background-color: transparent; opacity: 1; transform: translateY(0); }}
-        }}
-        .new-row {{
-          animation: rowFadeIn 1.2s ease forwards;
-        }}
+        body {{ font-family:'Poppins',sans-serif; background:#f4f6f9; }}
+        .card {{ border-radius:1rem; box-shadow:0 4px 12px rgba(0,0,0,.1); }}
+        .toast {{ opacity:0; transition: opacity 0.5s ease-in-out, transform 0.4s ease-in-out; transform: translateX(20px); }}
+        .toast.show {{ opacity:1; transform: translateX(0); }}
       </style>
     </head>
     <body>
-      <div class="container py-4">
-        <div class="d-flex justify-content-end mb-3">
-          <button id="darkToggle" class="btn btn-outline-dark">🌙 Dark Mode</button>
-        </div>
-        {content}
-      </div>
+    <div class="container py-4">
 
-      <!-- Toast Container -->
-      <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
-        <div id="mainToast" class="toast align-items-center text-bg-success border-0" role="alert">
-          <div class="d-flex">
-            <div class="toast-body" id="toastMessage">✅ Data berhasil disimpan!</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      {{% with messages = get_flashed_messages(with_categories=true) %}}
+        {{% if messages %}}
+          <div class="toast-container position-fixed top-0 end-0 p-3">
+            {{% for category, msg in messages %}}
+              <div class="toast align-items-center text-bg-{{{{ category }}}} border-0 show" role="alert">
+                <div class="d-flex">
+                  <div class="toast-body">{{{{ msg }}}}</div>
+                  <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+              </div>
+            {{% endfor %}}
           </div>
-        </div>
-      </div>
+        {{% endif %}}
+      {{% endwith %}}
 
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-      <script>
-        // Toast helper
-        function showToast(message, type="success") {{
-          const toastEl = document.getElementById("mainToast");
-          const toastBody = document.getElementById("toastMessage");
-          toastBody.textContent = message;
-          toastEl.className = "toast align-items-center border-0 text-bg-" + 
-                              (type === "error" ? "danger" : "success");
-          const toast = new bootstrap.Toast(toastEl, {{ delay: 3000, autohide: true }});
-          toast.show();
-        }}
+      {content}
 
-        // Dark mode toggle
-        const toggleBtn = document.getElementById("darkToggle");
-        if (localStorage.getItem("theme") === "dark") {{
-          document.body.classList.add("dark-mode");
-          toggleBtn.textContent = "☀️ Light Mode";
-        }}
-        toggleBtn.addEventListener("click", () => {{
-          document.body.classList.toggle("dark-mode");
-          if (document.body.classList.contains("dark-mode")) {{
-            toggleBtn.textContent = "☀️ Light Mode";
-            localStorage.setItem("theme","dark");
-          }} else {{
-            toggleBtn.textContent = "🌙 Dark Mode";
-            localStorage.setItem("theme","light");
-          }}
-        }});
-
-        // Flash messages to toast
-        document.addEventListener("DOMContentLoaded", () => {{
-          {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-              showToast("{{ message }}", "{{ category }}");
-            {% endfor %}
-          {% endwith %}
-        }});
-      </script>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      document.querySelectorAll('.toast').forEach(t => {{
+        new bootstrap.Toast(t, {{ delay: 3000 }}).show();
+      }});
+    </script>
     </body>
     </html>
     """)
@@ -203,11 +119,10 @@ def register():
         try:
             with sqlite3.connect("rekap.db") as conn:
                 conn.execute("INSERT INTO users (kode_toko,password) VALUES (?,?)",(kode,pw))
-            flash("Registrasi berhasil, silakan login ✅","success")
+            flash("Registrasi berhasil ✅","success")
             return redirect(url_for("login"))
-        except:
-            flash("❌ Kode toko sudah terdaftar!","error")
-            return redirect(url_for("register"))
+        except: 
+            flash("❌ Kode toko sudah terdaftar!","danger")
     return base_template("""
     <h3>Registrasi</h3>
     <form method="POST" class="card p-4">
@@ -228,10 +143,9 @@ def login():
             u=c.fetchone()
         if u:
             session.update({"user_id":u[0],"kode_toko":kode,"role":u[1]})
-            flash("Login berhasil ✅","success")
+            flash("Login berhasil 🚀","success")
             return redirect(url_for("index"))
-        flash("❌ Login gagal, periksa kode/password","error")
-        return redirect(url_for("login"))
+        flash("❌ Login gagal!","danger")
     return base_template("""
     <h3>Login</h3>
     <form method="POST" class="card p-4">
@@ -245,7 +159,7 @@ def login():
 @app.route("/logout")
 def logout(): 
     session.clear()
-    flash("Berhasil logout 👋","success")
+    flash("Berhasil logout 👋","info")
     return redirect(url_for("login"))
 
 # --- DASHBOARD ---
@@ -263,9 +177,7 @@ def index():
         with sqlite3.connect("rekap.db") as conn:
             conn.execute("INSERT INTO pengiriman (user_id,nrb,tgl_pengiriman,no_mobil,driver,bukti_url) VALUES (?,?,?,?,?,?)",
                          (user_id,nrb,tgl,no,drv,url))
-        flash("Data berhasil disimpan ✅","success")
-        return redirect(url_for("index"))
-
+        flash("Data pengiriman berhasil disimpan 💾","success")
     with sqlite3.connect("rekap.db") as conn:
         c=conn.cursor()
         if session["role"]=="admin":
@@ -281,15 +193,12 @@ def index():
             else:
                 c.execute("SELECT nrb,tgl_pengiriman,no_mobil,driver,bukti_url FROM pengiriman WHERE user_id=? ORDER BY id DESC",(user_id,))
         data=c.fetchall()
-
     rows=""
-    for i,r in enumerate(data):
-        cls="new-row" if i==0 else ""
+    for r in data:
         if session["role"]=="admin":
-            rows+=f"<tr class='{cls}'><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><a href='{r[5]}' target='_blank'>Bukti</a></td></tr>"
+            rows+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><a href='{r[5]}' target='_blank'>Bukti</a></td></tr>"
         else:
-            rows+=f"<tr class='{cls}'><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td><a href='{r[4]}' target='_blank'>Bukti</a></td></tr>"
-
+            rows+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td><a href='{r[4]}' target='_blank'>Bukti</a></td></tr>"
     return base_template(f"""
     <h2 class="text-center">📦 Rekap Pengiriman<br><small>{session['kode_toko']} ({session['role']})</small></h2>
     <div class="d-flex flex-column flex-md-row justify-content-between mb-3 gap-2">
@@ -360,12 +269,14 @@ def export_pdf():
             else: q+=" ORDER BY id DESC"; c.execute(q,(user_id,))
         data=c.fetchall()
     pdf=FPDF(); pdf.add_page(); pdf.set_font("Arial","B",14); pdf.cell(0,10,"Rekap Pengiriman",0,1,"C"); pdf.set_font("Arial","",10)
-    colw=[30,30,30,40,40]; header=["Kode Toko","NRB","Tanggal","No Mobil","Driver"] if session["role"]=="admin" else ["NRB","Tanggal","No Mobil","Driver"]
-    for i,h in enumerate(header): pdf.cell(colw[i],8,h,1,0,"C"); pdf.ln()
+    colw=[30,30,30,40,40]; headers=["Kode Toko","NRB","Tanggal","No Mobil","Driver"] if session["role"]=="admin" else ["NRB","Tanggal","No Mobil","Driver"]
+    for i,h in enumerate(headers): pdf.cell(colw[i],8,h,1,0,"C")
+    pdf.ln()
     for r in data:
-        for i,c in enumerate(r): pdf.cell(colw[i],8,str(c),1)
+        for i,v in enumerate(r): pdf.cell(colw[i],8,str(v),1,0,"C")
         pdf.ln()
     fn=f"rekap_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"; path=f"/tmp/{fn}"; pdf.output(path)
     return send_file(path,as_attachment=True,download_name=fn)
 
-if __name__=="__main__": app.run(debug=True)
+if __name__=="__main__": 
+    app.run(host="0.0.0.0", port=5000, debug=True)

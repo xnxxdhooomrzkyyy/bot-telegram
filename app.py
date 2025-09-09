@@ -1,241 +1,246 @@
 import os
 import sqlite3
 import hashlib
-import cloudinary
-import cloudinary.uploader
-from flask import Flask, request, redirect, url_for, render_template_string, send_file, session
+from flask import Flask, request, redirect, url_for, session, send_file, render_template_string
+from werkzeug.utils import secure_filename
 from openpyxl import Workbook
 from datetime import datetime
-from functools import wraps
+import cloudinary
+import cloudinary.uploader
+from fpdf import FPDF
 
-# --- Flask Setup ---
+# --- CONFIG ---
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "secret-key-anda")
+app.secret_key = "supersecretkey"
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# --- Cloudinary Setup ---
+# Cloudinary (ambil dari environment Render)
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
 
-# --- Database ---
+# --- DB INIT ---
 def init_db():
     with sqlite3.connect("rekap.db") as conn:
         c = conn.cursor()
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                kode_toko TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT DEFAULT 'user'
-            )
-        ''')
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS pengiriman (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                nrb TEXT NOT NULL,
-                tgl_pengiriman TEXT NOT NULL,
-                no_mobil TEXT NOT NULL,
-                driver TEXT NOT NULL,
-                bukti_url TEXT,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
-        ''')
-        conn.commit()
-
+        c.execute("""CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        kode_toko TEXT UNIQUE,
+                        password TEXT,
+                        role TEXT DEFAULT 'user'
+                    )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS pengiriman (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER,
+                        nrb TEXT,
+                        tgl_pengiriman TEXT,
+                        no_mobil TEXT,
+                        driver TEXT,
+                        bukti_url TEXT
+                    )""")
 init_db()
 
-# --- Helper ---
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def get_user_id():
-    return session.get("user_id")
-
+# --- UTILS ---
+def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
+def get_user_id(): return session.get("user_id")
 def login_required(f):
+    from functools import wraps
     @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
+    def wrapper(*a, **kw):
+        if not session.get("user_id"): return redirect(url_for("login"))
+        return f(*a, **kw)
     return wrapper
 
-# --- Register ---
-@app.route("/register", methods=["GET", "POST"])
+# --- BASE HTML ---
+def base_template(content):
+    return render_template_string(f"""
+    <!doctype html>
+    <html lang="id">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Rekap Pengiriman</title>
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+      <link rel="manifest" href="{{{{ url_for('static', filename='manifest.json') }}}}">
+      <meta name="theme-color" content="#2c3e50">
+      <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+      <style>body{{font-family:'Poppins',sans-serif;background:#f4f6f9}}.card{{border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.1)}}</style>
+      <script>
+        if("serviceWorker" in navigator){{
+          window.addEventListener("load",()=>{{
+            navigator.serviceWorker.register("/static/service-worker.js");
+          }});
+        }}
+      </script>
+    </head>
+    <body>
+    <div class="container py-4">{content}</div>
+    </body>
+    </html>
+    """)
+
+# --- AUTH ---
+@app.route("/register", methods=["GET","POST"])
 def register():
-    if request.method == "POST":
-        kode_toko = request.form["kode_toko"]
-        password = hash_password(request.form["password"])
+    if request.method=="POST":
+        kode = request.form["kode_toko"]
+        pw = hash_password(request.form["password"])
         try:
             with sqlite3.connect("rekap.db") as conn:
-                c = conn.cursor()
-                c.execute("INSERT INTO users (kode_toko, password) VALUES (?, ?)", (kode_toko, password))
-                conn.commit()
+                conn.execute("INSERT INTO users (kode_toko,password) VALUES (?,?)",(kode,pw))
             return redirect(url_for("login"))
-        except sqlite3.IntegrityError:
-            return "❌ Kode toko sudah terdaftar!"
-    return render_template_string("""
-    <h2>📝 Registrasi</h2>
-    <form method="POST">
-        <label>Kode Toko</label><br>
-        <input type="text" name="kode_toko" required><br>
-        <label>Password</label><br>
-        <input type="password" name="password" required><br>
-        <button type="submit">Daftar</button>
-        <a href="{{ url_for('login') }}">Login</a>
+        except: return "❌ Kode toko sudah terdaftar!"
+    return base_template("""
+    <h3>Registrasi</h3>
+    <form method="POST" class="card p-4">
+      <input name="kode_toko" placeholder="Kode Toko" class="form-control mb-2" required>
+      <input type="password" name="password" placeholder="Password" class="form-control mb-2" required>
+      <button class="btn btn-primary w-100">Daftar</button>
+      <a href="/login">Login</a>
     </form>
     """)
 
-# --- Login ---
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET","POST"])
 def login():
-    if request.method == "POST":
-        kode_toko = request.form["kode_toko"]
-        password = hash_password(request.form["password"])
+    if request.method=="POST":
+        kode = request.form["kode_toko"]; pw = hash_password(request.form["password"])
         with sqlite3.connect("rekap.db") as conn:
-            c = conn.cursor()
-            c.execute("SELECT id, role FROM users WHERE kode_toko=? AND password=?", (kode_toko, password))
-            user = c.fetchone()
-            if user:
-                session["user_id"] = user[0]
-                session["kode_toko"] = kode_toko
-                session["role"] = user[1]
-                return redirect(url_for("index"))
-        return "❌ Kode toko atau password salah!"
-    return render_template_string("""
-    <h2>🔑 Login</h2>
-    <form method="POST">
-        <label>Kode Toko</label><br>
-        <input type="text" name="kode_toko" required><br>
-        <label>Password</label><br>
-        <input type="password" name="password" required><br>
-        <button type="submit">Login</button>
-        <a href="{{ url_for('register') }}">Daftar</a>
+            c=conn.cursor()
+            c.execute("SELECT id,role FROM users WHERE kode_toko=? AND password=?",(kode,pw))
+            u=c.fetchone()
+        if u:
+            session.update({"user_id":u[0],"kode_toko":kode,"role":u[1]})
+            return redirect(url_for("index"))
+        return "❌ Login gagal!"
+    return base_template("""
+    <h3>Login</h3>
+    <form method="POST" class="card p-4">
+      <input name="kode_toko" placeholder="Kode Toko" class="form-control mb-2" required>
+      <input type="password" name="password" placeholder="Password" class="form-control mb-2" required>
+      <button class="btn btn-success w-100">Login</button>
+      <a href="/register">Daftar</a>
     </form>
     """)
 
-# --- Logout ---
 @app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
+def logout(): session.clear(); return redirect(url_for("login"))
 
-# --- Index (Input + List Data) ---
-@app.route("/", methods=["GET", "POST"])
+# --- DASHBOARD ---
+@app.route("/", methods=["GET","POST"])
 @login_required
 def index():
-    user_id = get_user_id()
-
-    if request.method == "POST" and "nrb" in request.form:
-        nrb = request.form["nrb"]
-        tgl_pengiriman = request.form["tgl_pengiriman"]
-        no_mobil = request.form["no_mobil"]
-        driver = request.form["driver"]
-
-        file = request.files["bukti"]
-        bukti_url = None
-        if file and file.filename != "":
-            upload_result = cloudinary.uploader.upload(file, folder="pengiriman")
-            bukti_url = upload_result["secure_url"]
-
+    user_id=get_user_id(); search=request.args.get("search_nrb","").strip()
+    if request.method=="POST":
+        nrb=request.form["nrb"]; tgl=request.form["tgl_pengiriman"]
+        no=request.form["no_mobil"]; drv=request.form["driver"]
+        bukti=request.files["bukti"]; url=""
+        if bukti and bukti.filename:
+            fname=secure_filename(bukti.filename); path=os.path.join(UPLOAD_FOLDER,fname)
+            bukti.save(path); up=cloudinary.uploader.upload(path); url=up.get("secure_url","")
         with sqlite3.connect("rekap.db") as conn:
-            c = conn.cursor()
-            c.execute("INSERT INTO pengiriman (user_id, nrb, tgl_pengiriman, no_mobil, driver, bukti_url) VALUES (?, ?, ?, ?, ?, ?)",
-                      (user_id, nrb, tgl_pengiriman, no_mobil, driver, bukti_url))
-            conn.commit()
-
-        return redirect(url_for("index"))
-
-    search_nrb = request.args.get("search_nrb", "").strip()
+            conn.execute("INSERT INTO pengiriman (user_id,nrb,tgl_pengiriman,no_mobil,driver,bukti_url) VALUES (?,?,?,?,?,?)",
+                         (user_id,nrb,tgl,no,drv,url))
     with sqlite3.connect("rekap.db") as conn:
-        c = conn.cursor()
-        if session["role"] == "admin":
-            if search_nrb:
-                c.execute("SELECT u.kode_toko, p.nrb, p.tgl_pengiriman, p.no_mobil, p.driver, p.bukti_url FROM pengiriman p JOIN users u ON p.user_id=u.id WHERE p.nrb LIKE ? ORDER BY p.id DESC", (f"%{search_nrb}%",))
+        c=conn.cursor()
+        if session["role"]=="admin":
+            if search:
+                c.execute("""SELECT u.kode_toko,p.nrb,p.tgl_pengiriman,p.no_mobil,p.driver,p.bukti_url
+                             FROM pengiriman p JOIN users u ON p.user_id=u.id WHERE p.nrb LIKE ? ORDER BY p.id DESC""",(f"%{search}%",))
             else:
-                c.execute("SELECT u.kode_toko, p.nrb, p.tgl_pengiriman, p.no_mobil, p.driver, p.bukti_url FROM pengiriman p JOIN users u ON p.user_id=u.id ORDER BY p.id DESC")
+                c.execute("""SELECT u.kode_toko,p.nrb,p.tgl_pengiriman,p.no_mobil,p.driver,p.bukti_url
+                             FROM pengiriman p JOIN users u ON p.user_id=u.id ORDER BY p.id DESC""")
         else:
-            if search_nrb:
-                c.execute("SELECT nrb, tgl_pengiriman, no_mobil, driver, bukti_url FROM pengiriman WHERE user_id=? AND nrb LIKE ? ORDER BY id DESC", (user_id, f"%{search_nrb}%"))
+            if search:
+                c.execute("SELECT nrb,tgl_pengiriman,no_mobil,driver,bukti_url FROM pengiriman WHERE user_id=? AND nrb LIKE ? ORDER BY id DESC",(user_id,f"%{search}%"))
             else:
-                c.execute("SELECT nrb, tgl_pengiriman, no_mobil, driver, bukti_url FROM pengiriman WHERE user_id=? ORDER BY id DESC", (user_id,))
-        data = c.fetchall()
-
-    return render_template_string("""
-    <h2>📦 Rekap Pengiriman - {{ session['kode_toko'] }} ({{ session['role'] }})</h2>
-    <a href="{{ url_for('logout') }}">Logout</a>
-    <hr>
-
-    <form method="POST" enctype="multipart/form-data">
-        NRB: <input type="text" name="nrb" required><br>
-        Tanggal: <input type="date" name="tgl_pengiriman" required><br>
-        Nomor Mobil: <input type="text" name="no_mobil" required><br>
-        Driver: <input type="text" name="driver" required><br>
-        Bukti: <input type="file" name="bukti"><br>
-        <button type="submit">Simpan</button>
+                c.execute("SELECT nrb,tgl_pengiriman,no_mobil,driver,bukti_url FROM pengiriman WHERE user_id=? ORDER BY id DESC",(user_id,))
+        data=c.fetchall()
+    rows=""
+    for r in data:
+        if session["role"]=="admin":
+            rows+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td><a href='{r[5]}' target='_blank'>Bukti</a></td></tr>"
+        else:
+            rows+=f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td><a href='{r[4]}' target='_blank'>Bukti</a></td></tr>"
+    return base_template(f"""
+    <h2 class="text-center">📦 Rekap Pengiriman<br><small>{session['kode_toko']} ({session['role']})</small></h2>
+    <div class="d-flex flex-column flex-md-row justify-content-between mb-3 gap-2">
+      <a href="/logout" class="btn btn-danger">Logout</a>
+      <div class="d-flex flex-column flex-sm-row gap-2">
+        <a href="/export?search_nrb={search}" class="btn btn-success">📤 Excel</a>
+        <a href="/export_pdf?search_nrb={search}" class="btn btn-danger">📑 PDF</a>
+      </div>
+    </div>
+    <div class="card p-3 mb-3">
+      <form method="POST" enctype="multipart/form-data" class="row g-2">
+        <div class="col-12 col-md-3"><input name="nrb" placeholder="NRB" class="form-control" required></div>
+        <div class="col-12 col-md-3"><input type="date" name="tgl_pengiriman" class="form-control" required></div>
+        <div class="col-12 col-md-3"><input name="no_mobil" placeholder="Nomor Mobil" class="form-control" required></div>
+        <div class="col-12 col-md-3"><input name="driver" placeholder="Nama Driver" class="form-control" required></div>
+        <div class="col-12"><input type="file" name="bukti" class="form-control"></div>
+        <div class="col-12"><button class="btn btn-primary w-100">💾 Simpan</button></div>
+      </form>
+    </div>
+    <form method="GET" class="row g-2 mb-3">
+      <div class="col-12 col-md-4"><input name="search_nrb" value="{search}" class="form-control" placeholder="Cari NRB"></div>
+      <div class="col-12 col-md-2"><button class="btn btn-secondary w-100">Cari</button></div>
     </form>
+    <div class="card p-3 table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead><tr>{("<th>Kode Toko</th>" if session['role']=="admin" else "")}<th>NRB</th><th>Tanggal</th><th>No Mobil</th><th>Driver</th><th>Bukti</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+    """)
 
-    <form method="GET">
-        Cari NRB: <input type="text" name="search_nrb" value="{{ request.args.get('search_nrb', '') }}">
-        <button type="submit">Cari</button>
-    </form>
-
-    <table border="1" cellpadding="5">
-        <tr>
-            {% if session['role'] == 'admin' %}
-            <th>Kode Toko</th>
-            {% endif %}
-            <th>NRB</th><th>Tanggal</th><th>No Mobil</th><th>Driver</th><th>Bukti</th>
-        </tr>
-        {% for row in data %}
-        <tr>
-            {% if session['role'] == 'admin' %}
-            <td>{{row[0]}}</td><td>{{row[1]}}</td><td>{{row[2]}}</td><td>{{row[3]}}</td><td>{{row[4]}}</td>
-            <td>{% if row[5] %}<a href="{{row[5]}}" target="_blank">Lihat</a>{% else %}-{% endif %}</td>
-            {% else %}
-            <td>{{row[0]}}</td><td>{{row[1]}}</td><td>{{row[2]}}</td><td>{{row[3]}}</td>
-            <td>{% if row[4] %}<a href="{{row[4]}}" target="_blank">Lihat</a>{% else %}-{% endif %}</td>
-            {% endif %}
-        </tr>
-        {% endfor %}
-    </table>
-    """, data=data)
-
-# --- Export Excel ---
+# --- EXPORT EXCEL ---
 @app.route("/export")
 @login_required
-def export_excel():
-    user_id = get_user_id()
-    search_nrb = request.args.get("search_nrb", "").strip()
-
+def export():
+    user_id=get_user_id(); search=request.args.get("search_nrb","").strip()
     with sqlite3.connect("rekap.db") as conn:
-        c = conn.cursor()
-        if session["role"] == "admin":
-            if search_nrb:
-                c.execute("SELECT u.kode_toko, p.nrb, p.tgl_pengiriman, p.no_mobil, p.driver, p.bukti_url FROM pengiriman p JOIN users u ON p.user_id=u.id WHERE p.nrb LIKE ? ORDER BY p.id ASC", (f"%{search_nrb}%",))
-            else:
-                c.execute("SELECT u.kode_toko, p.nrb, p.tgl_pengiriman, p.no_mobil, p.driver, p.bukti_url FROM pengiriman p JOIN users u ON p.user_id=u.id ORDER BY p.id ASC")
+        c=conn.cursor()
+        if session["role"]=="admin":
+            q="SELECT u.kode_toko,p.nrb,p.tgl_pengiriman,p.no_mobil,p.driver,p.bukti_url FROM pengiriman p JOIN users u ON p.user_id=u.id"
+            if search: q+=" WHERE p.nrb LIKE ? ORDER BY p.id DESC"; c.execute(q,(f"%{search}%",))
+            else: q+=" ORDER BY p.id DESC"; c.execute(q)
         else:
-            if search_nrb:
-                c.execute("SELECT nrb, tgl_pengiriman, no_mobil, driver, bukti_url FROM pengiriman WHERE user_id=? AND nrb LIKE ? ORDER BY id ASC", (user_id, f"%{search_nrb}%"))
-            else:
-                c.execute("SELECT nrb, tgl_pengiriman, no_mobil, driver, bukti_url FROM pengiriman WHERE user_id=? ORDER BY id ASC", (user_id,))
-        data = c.fetchall()
+            q="SELECT nrb,tgl_pengiriman,no_mobil,driver,bukti_url FROM pengiriman WHERE user_id=?"
+            if search: q+=" AND nrb LIKE ? ORDER BY id DESC"; c.execute(q,(user_id,f"%{search}%",))
+            else: q+=" ORDER BY id DESC"; c.execute(q,(user_id,))
+        data=c.fetchall()
+    wb=Workbook(); ws=wb.active; ws.title="Rekap"
+    ws.append(["Kode Toko","NRB","Tanggal","No Mobil","Driver","Bukti"] if session["role"]=="admin" else ["NRB","Tanggal","No Mobil","Driver","Bukti"])
+    for row in data: ws.append(row)
+    fn=f"rekap_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"; path=f"/tmp/{fn}"; wb.save(path)
+    return send_file(path,as_attachment=True,download_name=fn)
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Rekap Pengiriman"
-    headers = ["NRB", "Tanggal", "No Mobil", "Driver", "Bukti"] if session["role"] != "admin" else ["Kode Toko", "NRB", "Tanggal", "No Mobil", "Driver", "Bukti"]
-    ws.append(headers)
-    for row in data:
-        ws.append(row)
+# --- EXPORT PDF ---
+@app.route("/export_pdf")
+@login_required
+def export_pdf():
+    user_id=get_user_id(); search=request.args.get("search_nrb","").strip()
+    with sqlite3.connect("rekap.db") as conn:
+        c=conn.cursor()
+        if session["role"]=="admin":
+            q="SELECT u.kode_toko,p.nrb,p.tgl_pengiriman,p.no_mobil,p.driver FROM pengiriman p JOIN users u ON p.user_id=u.id"
+            if search: q+=" WHERE p.nrb LIKE ? ORDER BY p.id DESC"; c.execute(q,(f"%{search}%",))
+            else: q+=" ORDER BY p.id DESC"; c.execute(q)
+        else:
+            q="SELECT nrb,tgl_pengiriman,no_mobil,driver FROM pengiriman WHERE user_id=?"
+            if search: q+=" AND nrb LIKE ? ORDER BY id DESC"; c.execute(q,(user_id,f"%{search}%",))
+            else: q+=" ORDER BY id DESC"; c.execute(q,(user_id,))
+        data=c.fetchall()
+    pdf=FPDF(); pdf.add_page(); pdf.set_font("Arial","B",14); pdf.cell(0,10,"Rekap Pengiriman",0,1,"C"); pdf.set_font("Arial","",10)
+    colw=[30,30,30,40,40]; headers=["Kode Toko","NRB","Tanggal","No Mobil","Driver"] if session["role"]=="admin" else ["NRB","Tanggal","No Mobil","Driver"]
+    for i,h in enumerate(headers): pdf.cell(colw[i],10,h,1,0,"C"); pdf.ln() if i==len(headers)-1 else None
+    for r in data:
+        for i,v in enumerate(r): pdf.cell(colw[i],10,str(v),1,0,"C")
+        pdf.ln()
+    fn=f"rekap_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"; path=f"/tmp/{fn}"; pdf.output(path)
+    return send_file(path,as_attachment=True,download_name=fn)
 
-    filename = f"rekap_pengiriman_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-    wb.save(filename)
-    return send_file(filename, as_attachment=True)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=True)
+if __name__=="__main__": app.run(debug=True)

@@ -9,20 +9,22 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     filters, ContextTypes, CallbackQueryHandler
 )
+from flask import Flask
+import threading
 
+# ====== Konfigurasi ======
 TOKEN = os.getenv("BOT_TOKEN")  # ambil token dari environment
 WORKDIR = "barcodes"
 os.makedirs(WORKDIR, exist_ok=True)
 
-produk_df = None  # Global data Excel
+produk_df = None  # Data Excel global
 
-
+# ====== Handler Bot ======
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Halo! Kirim file Excel berisi PLU, Nama Produk, dan Barcode.\n"
         "Setelah itu, ketik PLU atau nama produk."
     )
-
 
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global produk_df
@@ -38,7 +40,6 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     produk_df = df
     await update.message.reply_text("✅ File berhasil dibaca! Sekarang ketik PLU atau nama produk.")
-
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global produk_df
@@ -70,14 +71,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await kirim_barcode(update, row.iloc[0])
 
-
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     plu = int(query.data)
     row = produk_df[produk_df["PLU"] == plu].iloc[0]
     await kirim_barcode(query, row, from_callback=True)
-
 
 async def kirim_barcode(update_or_query, row, from_callback=False):
     nama = str(row["Nama Produk"])
@@ -102,8 +101,7 @@ async def kirim_barcode(update_or_query, row, from_callback=False):
         await update_or_query.message.reply_text(text)
         await update_or_query.message.reply_photo(photo=open(filename, "rb"))
 
-
-def main():
+def run_bot():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_file))
@@ -111,6 +109,16 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.run_polling()
 
+# ====== Flask dummy server ======
+flask_app = Flask(__name__)
+
+@flask_app.route("/")
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
 
 if __name__ == "__main__":
-    main()
+    threading.Thread(target=run_flask).start()
+    run_bot()

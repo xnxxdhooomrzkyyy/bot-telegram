@@ -13,7 +13,7 @@ from flask import Flask
 import threading
 
 # ====== Konfigurasi ======
-TOKEN = os.getenv("BOT_TOKEN")  # ambil token dari environment
+TOKEN = "7694961040:AAG84xUADIXwu-U2YiZfBIsGpbNp4vU4zfg"  # <<< ganti dengan token dari BotFather
 WORKDIR = "barcodes"
 os.makedirs(WORKDIR, exist_ok=True)
 

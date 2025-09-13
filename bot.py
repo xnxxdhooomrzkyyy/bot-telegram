@@ -13,7 +13,7 @@ from flask import Flask
 import threading
 
 # ====== Konfigurasi ======
-TOKEN = "MASUKKAN_TOKEN_BOT_DISINI"  # ganti dengan token asli dari BotFather
+TOKEN = "7694961040:AAG84xUADIXwu-U2YiZfBIsGpbNp4vU4zfg"  # ganti dengan token asli dari BotFather
 WORKDIR = "barcodes"
 os.makedirs(WORKDIR, exist_ok=True)
 

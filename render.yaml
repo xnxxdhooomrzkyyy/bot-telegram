@@ -1,5 +1,5 @@
 services:
-  - type: worker
+  - type: web
     name: telegram-barcode-bot
     env: python
     plan: free
@@ -7,4 +7,4 @@ services:
     startCommand: "python bot.py"
     envVars:
       - key: BOT_TOKEN
-        sync: false   # artinya nanti isi manual di dashboard Render
+        sync: false

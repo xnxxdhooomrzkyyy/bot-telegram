@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from reportlab.graphics.barcode import code128
+from reportlab.graphics.barcode import createBarcodeDrawing
 from reportlab.graphics.shapes import Drawing, String
 from reportlab.graphics import renderPM
 from reportlab.lib.units import mm
@@ -66,7 +66,15 @@ async def kirim_barcode(update_or_query, row, from_callback=False):
     plu = str(row["PLU"])
     barcode_val = str(row["Barcode"])
 
-    barcode_obj = code128.Code128(barcode_val, barHeight=30*mm, barWidth=0.5*mm)
+    # Generate barcode sebagai Drawing
+    barcode_obj = createBarcodeDrawing(
+        "Code128",
+        value=barcode_val,
+        barHeight=30*mm,
+        barWidth=0.5*mm
+    )
+
+    # Buat canvas Drawing tambahan
     drawing = Drawing(80*mm, 60*mm)
     drawing.add(String(5*mm, 50*mm, nama, fontName="Helvetica", fontSize=12))
     drawing.add(barcode_obj)

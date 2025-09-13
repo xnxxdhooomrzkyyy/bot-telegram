@@ -13,40 +13,23 @@ from flask import Flask
 import threading
 
 # ====== Konfigurasi ======
-TOKEN = "7694961040:AAG84xUADIXwu-U2YiZfBIsGpbNp4vU4zfg"  # <<< ganti dengan token dari BotFather
+TOKEN = "MASUKKAN_TOKEN_BOT_DISINI"  # ganti dengan token asli dari BotFather
 WORKDIR = "barcodes"
 os.makedirs(WORKDIR, exist_ok=True)
 
-produk_df = None  # Data Excel global
+# ====== Load Excel sekali saja ======
+EXCEL_FILE = "produk.xlsx"
+produk_df = pd.read_excel(EXCEL_FILE)
 
 # ====== Handler Bot ======
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Halo! Kirim file Excel berisi PLU, Nama Produk, dan Barcode.\n"
-        "Setelah itu, ketik PLU atau nama produk."
+        "Halo! Bot Barcode siap.\n"
+        "Ketik *PLU* atau *Nama Produk* untuk mencari barcode.",
+        parse_mode="Markdown"
     )
 
-async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global produk_df
-    file = await update.message.document.get_file()
-    file_path = os.path.join(WORKDIR, "produk.xlsx")
-    await file.download_to_drive(file_path)
-
-    df = pd.read_excel(file_path)
-    required_cols = {"PLU", "Nama Produk", "Barcode"}
-    if not required_cols.issubset(set(df.columns)):
-        await update.message.reply_text("❌ Excel harus punya kolom: PLU, Nama Produk, Barcode.")
-        return
-
-    produk_df = df
-    await update.message.reply_text("✅ File berhasil dibaca! Sekarang ketik PLU atau nama produk.")
-
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global produk_df
-    if produk_df is None:
-        await update.message.reply_text("❌ Belum ada file Excel. Kirim dulu file Excel.")
-        return
-
     user_input = update.message.text.strip()
 
     if user_input.isdigit():
@@ -104,7 +87,6 @@ async def kirim_barcode(update_or_query, row, from_callback=False):
 def run_bot():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.Document.ALL, handle_file))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.run_polling()

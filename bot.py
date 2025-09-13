@@ -1,0 +1,116 @@
+import os
+import pandas as pd
+from reportlab.graphics.barcode import code128
+from reportlab.graphics.shapes import Drawing, String
+from reportlab.graphics import renderPM
+from reportlab.lib.units import mm
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler,
+    filters, ContextTypes, CallbackQueryHandler
+)
+
+TOKEN = os.getenv("BOT_TOKEN")  # ambil token dari environment
+WORKDIR = "barcodes"
+os.makedirs(WORKDIR, exist_ok=True)
+
+produk_df = None  # Global data Excel
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Halo! Kirim file Excel berisi PLU, Nama Produk, dan Barcode.\n"
+        "Setelah itu, ketik PLU atau nama produk."
+    )
+
+
+async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global produk_df
+    file = await update.message.document.get_file()
+    file_path = os.path.join(WORKDIR, "produk.xlsx")
+    await file.download_to_drive(file_path)
+
+    df = pd.read_excel(file_path)
+    required_cols = {"PLU", "Nama Produk", "Barcode"}
+    if not required_cols.issubset(set(df.columns)):
+        await update.message.reply_text("❌ Excel harus punya kolom: PLU, Nama Produk, Barcode.")
+        return
+
+    produk_df = df
+    await update.message.reply_text("✅ File berhasil dibaca! Sekarang ketik PLU atau nama produk.")
+
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global produk_df
+    if produk_df is None:
+        await update.message.reply_text("❌ Belum ada file Excel. Kirim dulu file Excel.")
+        return
+
+    user_input = update.message.text.strip()
+
+    if user_input.isdigit():
+        row = produk_df[produk_df["PLU"] == int(user_input)]
+    else:
+        row = produk_df[produk_df["Nama Produk"].str.contains(user_input, case=False, na=False)]
+
+    if row.empty:
+        await update.message.reply_text(f"❌ Tidak ditemukan untuk '{user_input}'.")
+        return
+
+    if len(row) > 1:
+        keyboard = [
+            [InlineKeyboardButton(f"{r['Nama Produk']} (PLU {r['PLU']})", callback_data=str(r["PLU"]))]
+            for _, r in row.iterrows()
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            f"Ditemukan {len(row)} produk untuk '{user_input}'. Pilih salah satu:",
+            reply_markup=reply_markup
+        )
+    else:
+        await kirim_barcode(update, row.iloc[0])
+
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    plu = int(query.data)
+    row = produk_df[produk_df["PLU"] == plu].iloc[0]
+    await kirim_barcode(query, row, from_callback=True)
+
+
+async def kirim_barcode(update_or_query, row, from_callback=False):
+    nama = str(row["Nama Produk"])
+    plu = str(row["PLU"])
+    barcode_val = str(row["Barcode"])
+
+    barcode_obj = code128.Code128(barcode_val, barHeight=30*mm, barWidth=0.5*mm)
+    drawing = Drawing(80*mm, 60*mm)
+    drawing.add(String(5*mm, 50*mm, nama, fontName="Helvetica", fontSize=12))
+    drawing.add(barcode_obj)
+    drawing.add(String(5*mm, 5*mm, barcode_val, fontName="Helvetica", fontSize=12))
+
+    filename = os.path.join(WORKDIR, f"{plu}_{barcode_val}.png")
+    renderPM.drawToFile(drawing, filename, fmt="PNG")
+
+    text = f"📦 {nama}\nPLU: {plu}\nBarcode: {barcode_val}"
+
+    if from_callback:
+        await update_or_query.message.reply_text(text)
+        await update_or_query.message.reply_photo(photo=open(filename, "rb"))
+    else:
+        await update_or_query.message.reply_text(text)
+        await update_or_query.message.reply_photo(photo=open(filename, "rb"))
+
+
+def main():
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_file))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()

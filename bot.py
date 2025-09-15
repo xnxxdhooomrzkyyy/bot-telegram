@@ -6,7 +6,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 # Ambil token dari environment variable
-TOKEN = os.getenv"7694961040:AAG84xUADIXwu-U2YiZfBIsGpbNp4vU4zfg"
+TOKEN = "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
 EXCEL_FILE = "produk.xlsx"
 OUTPUT_FOLDER = "barcodes"
 

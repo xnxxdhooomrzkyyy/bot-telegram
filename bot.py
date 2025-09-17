@@ -22,7 +22,7 @@ from telegram.ext import (
 HARD_CODED_TOKEN = None
 TOKEN = os.getenv("TELEGRAM_TOKEN") or HARD_CODED_TOKEN
 
-CSV_FILE = "produk.csv"   # <-- diganti dari produk.xlsx
+CSV_FILE = "produk.csv"   # file produk pakai ; sebagai delimiter
 OUTPUT_FOLDER = "barcodes"
 DEFAULT_PORT = 10000
 # ==================
@@ -66,7 +66,15 @@ def start_http_thread():
 def load_csv():
     if not os.path.exists(CSV_FILE):
         raise FileNotFoundError(f"File {CSV_FILE} tidak ditemukan.")
-    return pd.read_csv(CSV_FILE)
+    try:
+        # coba baca dengan koma
+        df = pd.read_csv(CSV_FILE)
+        # kalau hasilnya cuma 1 kolom, berarti pakai delimiter ";"
+        if df.shape[1] == 1:
+            df = pd.read_csv(CSV_FILE, delimiter=";")
+        return df
+    except Exception as e:
+        raise RuntimeError(f"Gagal baca {CSV_FILE}: {e}")
 
 def generate_barcode_image(kode_barcode: str, filename: str):
     base = filename

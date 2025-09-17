@@ -5,7 +5,7 @@ import barcode, os
 from barcode.writer import ImageWriter
 
 # ⚠️ Token langsung ditulis di sini
-TOKEN = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+TOKEN = "7694961040:AAG84xUADIXwu-U2YiZfBIsGpbNp4vU4zfg"
 
 EXCEL_FILE = "produk.xlsx"
 OUTPUT_FOLDER = "barcodes"
@@ -118,5 +118,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

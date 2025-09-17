@@ -19,26 +19,23 @@ from telegram.ext import (
 )
 
 # ===== CONFIG =====
-# Jika mau hardcode (TIDAK DIREKOMENDASIKAN), isi di bawah:
-HARD_CODED_TOKEN = None  # e.g. "123456:ABC-DEF..."  <-- kalau mau, pasang di sini
+HARD_CODED_TOKEN = None
 TOKEN = os.getenv("TELEGRAM_TOKEN") or HARD_CODED_TOKEN
 
-EXCEL_FILE = "produk.xlsx"
+CSV_FILE = "produk.csv"   # <-- diganti dari produk.xlsx
 OUTPUT_FOLDER = "barcodes"
-DEFAULT_PORT = 10000  # fallback jika Render tidak set PORT (local testing)
+DEFAULT_PORT = 10000
 # ==================
 
-# pastikan folder ada
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# helper untuk nama file aman
 def safe_filename(s: str) -> str:
     s = str(s)
-    s = re.sub(r"[^\w\-_\. ]", "_", s)  # izinkan huruf, angka, underscore, dash, dot, spasi
+    s = re.sub(r"[^\w\-_\. ]", "_", s)
     s = s.replace(" ", "_")
     return s
 
-# ===== Dummy HTTP server (agar Render deteksi port terbuka) =====
+# ===== Dummy HTTP server =====
 PORT = int(os.getenv("PORT", DEFAULT_PORT))
 print("Detected PORT env:", PORT)
 print("PTB version:", getattr(telegram, "__version__", "unknown"))
@@ -50,7 +47,6 @@ class SimpleHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"Bot is running")
 
-    # supress logging each request
     def log_message(self, format, *args):
         return
 
@@ -66,15 +62,13 @@ def start_http_thread():
     t = threading.Thread(target=run_http_server, daemon=True)
     t.start()
 
-# ===== Excel & barcode helpers =====
-def load_excel():
-    if not os.path.exists(EXCEL_FILE):
-        raise FileNotFoundError(f"File {EXCEL_FILE} tidak ditemukan.")
-    return pd.read_excel(EXCEL_FILE)
+# ===== CSV & barcode helpers =====
+def load_csv():
+    if not os.path.exists(CSV_FILE):
+        raise FileNotFoundError(f"File {CSV_FILE} tidak ditemukan.")
+    return pd.read_csv(CSV_FILE)
 
 def generate_barcode_image(kode_barcode: str, filename: str):
-    """Generate barcode and return filename (png)."""
-    # sanitize filename
     base = filename
     if base.endswith(".png"):
         base = base[:-4]
@@ -88,7 +82,7 @@ def generate_barcode_image(kode_barcode: str, filename: str):
         else:
             barcode_class = barcode.get_barcode_class("code128")
         my_barcode = barcode_class(kode_barcode, writer=ImageWriter())
-        my_barcode.save(base)  # library akan menambahkan .png
+        my_barcode.save(base)
         return base + ".png"
     except Exception as e:
         print("Error generating barcode:", e)
@@ -104,7 +98,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def list_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        df = load_excel()
+        df = load_csv()
     except Exception as e:
         await update.message.reply_text(f"Error: {e}")
         return
@@ -126,7 +120,7 @@ async def cari_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cari_dan_tampilkan(update_obj, query_text: str):
     try:
-        df = load_excel()
+        df = load_csv()
     except Exception as e:
         await update_obj.message.reply_text(f"Error: {e}")
         return
@@ -156,7 +150,7 @@ async def pilih_produk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     kode_barcode = query.data
-    df = load_excel()
+    df = load_csv()
     row = df[df["Barcode"].astype(str) == kode_barcode].iloc[0]
     await kirim_barcode(query, row, is_callback=True)
 
@@ -184,9 +178,8 @@ async def kirim_barcode(update_or_query, row, is_callback=False):
 # ===== Main =====
 def main():
     if not TOKEN:
-        raise ValueError("❌ TELEGRAM_TOKEN belum diset. Set env var TELEGRAM_TOKEN atau isi HARD_CODED_TOKEN di file (tidak direkomendasikan).")
+        raise ValueError("❌ TELEGRAM_TOKEN belum diset. Set env var TELEGRAM_TOKEN atau isi HARD_CODED_TOKEN di file.")
 
-    # start dummy HTTP server so Render detects an open port for a Web Service
     start_http_thread()
 
     app = Application.builder().token(TOKEN).build()

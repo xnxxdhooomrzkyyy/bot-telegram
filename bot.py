@@ -99,8 +99,9 @@ def generate_barcode_image(kode_barcode: str, filename: str):
 # ===== Bot Handlers =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Halo! 👋\nKetik *PLU* atau *Nama Produk* untuk dapat barcode.\n"
-        "Gunakan /list untuk lihat semua produk, atau /search <kata kunci>.",
+        "Halo! Semuanya 👋\nKetik *PLU* atau *Nama Produk* untuk dapat barcode.\n"
+        "Gunakan /list untuk lihat semua produk, atau /search <kata kunci>."
+        "Daftar produk terbatas, apabila plu tidak ditemukan mohon chat admin / Ridho",
         parse_mode="Markdown",
     )
 
@@ -202,3 +203,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

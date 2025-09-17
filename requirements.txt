@@ -1,6 +1,5 @@
+python-telegram-bot==20.6
 pandas
 python-barcode
-pillow
-python-telegram-bot==20.6
+Pillow
 openpyxl
-

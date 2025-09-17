@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+
+# Data / Output
+barcodes/
+*.db
+*.sqlite3
+
+# Secrets
+.env

@@ -3,8 +3,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 import pandas as pd
 import barcode, os
 from barcode.writer import ImageWriter
-import telegram
-print(">>> PTB VERSION:", telegram.__version__)
 
 # ⚠️ Token langsung ditulis di sini
 TOKEN = "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
@@ -120,4 +118,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

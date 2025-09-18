@@ -1,0 +1,16 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # jalan tiap 5 menit
+  workflow_dispatch:         # bisa di-run manual juga
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl the Render URL
+        run: |
+          URL="https://bot-telegram-ow8u.onrender.com/"
+          echo "Pinging $URL at $(date)"
+          curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 --retry 3 --retry-delay 5 "$URL" || exit 0

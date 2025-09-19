@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Curl the Render URL
         run: |
-          URL="https://bot-telegram-ow8u.onrender.com/"
+          URL="https://bot-telegram-ow8v.onrender.com/"
           echo "Pinging $URL at $(date)"
           curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 --retry 3 --retry-delay 5 "$URL" || exit 0
